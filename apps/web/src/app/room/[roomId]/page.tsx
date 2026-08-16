@@ -1,5 +1,5 @@
 // ============================================================
-// PANDU — Game Lobby Page (3D Three.js Background & Fix Rules Stepper)
+// PANDU — Game Lobby Page (With Full Team Mode Selection)
 // ============================================================
 
 'use client';
@@ -15,6 +15,13 @@ import { GameMode, GamePhase } from '@pandu/shared';
 import { soundEngine } from '@/lib/audio';
 import { LobbyQRModal } from '@/components/lobby/LobbyQRModal';
 import { ThreeHeroCards } from '@/components/home/ThreeHeroCards';
+
+const TEAM_THEMES = [
+  { id: 'team_A', name: 'Team Ruby', bg: 'from-rose-500/20 to-rose-950/40', border: 'border-rose-500/40', activeBorder: 'border-rose-400 ring-2 ring-rose-400', text: 'text-rose-400', badge: 'bg-rose-500/30' },
+  { id: 'team_B', name: 'Team Sapphire', bg: 'from-sky-500/20 to-sky-950/40', border: 'border-sky-500/40', activeBorder: 'border-sky-400 ring-2 ring-sky-400', text: 'text-sky-400', badge: 'bg-sky-500/30' },
+  { id: 'team_C', name: 'Team Emerald', bg: 'from-emerald-500/20 to-emerald-950/40', border: 'border-emerald-500/40', activeBorder: 'border-emerald-400 ring-2 ring-emerald-400', text: 'text-emerald-400', badge: 'bg-emerald-500/30' },
+  { id: 'team_D', name: 'Team Amber', bg: 'from-amber-500/20 to-amber-950/40', border: 'border-amber-500/40', activeBorder: 'border-amber-400 ring-2 ring-amber-400', text: 'text-amber-400', badge: 'bg-amber-500/30' },
+];
 
 export default function RoomPage({ params }: { params: Promise<{ roomId: string }> }) {
   const { roomId } = use(params);
@@ -83,6 +90,7 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
 
   const cardsDealt = room?.settings.cardsDealt || 4;
   const initialViewable = room?.settings.initialViewable || 2;
+  const queenCount = room?.settings.queenCount || 4;
   const maxInitialViewable = Math.floor(cardsDealt / 2);
   const currentMode = room?.settings.mode || GameMode.INDIVIDUAL;
 
@@ -102,10 +110,21 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
     emitGameAction('lobby:updateSettings', { initialViewable: clamped });
   };
 
+  const handleUpdateQueenCount = (newQ: number) => {
+    soundEngine.playCardFlip();
+    updateSettingsLocal({ queenCount: newQ });
+    emitGameAction('lobby:updateSettings', { queenCount: newQ });
+  };
+
   const handleSetMode = (mode: GameMode) => {
     soundEngine.playCardFlip();
     updateSettingsLocal({ mode });
     emitGameAction('lobby:setMode', { mode });
+  };
+
+  const handleJoinTeam = (teamId: string) => {
+    soundEngine.playCardFlip();
+    emitGameAction('lobby:joinTeam', { teamId });
   };
 
   return (
@@ -188,7 +207,7 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
           </div>
         </div>
 
-        {/* ── Game Mode & Rule Customization (Host Only) ── */}
+        {/* ── Game Mode & Rule Customization (Host Controls) ── */}
         {isHost ? (
           <div className="space-y-4 mb-4">
             {/* Game Mode Section */}
@@ -215,6 +234,9 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
                   <span className="font-black text-base tracking-wide block">
                     Individual
                   </span>
+                  <span className="text-[11px] text-slate-400 mt-0.5 block">
+                    Free-for-all
+                  </span>
                 </button>
 
                 {/* Team Mode Card */}
@@ -228,6 +250,9 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
                 >
                   <span className="font-black text-base tracking-wide block">
                     Team Mode
+                  </span>
+                  <span className="text-[11px] text-slate-400 mt-0.5 block">
+                    Shared hands
                   </span>
                 </button>
               </div>
@@ -292,6 +317,31 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
                   </div>
                 </div>
               </div>
+
+              {/* Team Mode Queen Count (When Team Mode is active) */}
+              {currentMode === GameMode.TEAM && (
+                <div className="bg-[#141724]/90 border border-white/10 p-3.5 rounded-2xl text-center backdrop-blur-md mt-3 flex items-center justify-between">
+                  <div className="text-left">
+                    <p className="text-xs font-bold text-slate-200">Queen Count (Queens in Deck)</p>
+                    <p className="text-[11px] text-slate-400">Determines team endgame multiplier</p>
+                  </div>
+                  <div className="flex gap-2">
+                    {[2, 3, 4].map((q) => (
+                      <button
+                        key={q}
+                        className={`w-9 h-9 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                          queenCount === q
+                            ? 'bg-amber-400 text-slate-950 shadow-md font-black ring-2 ring-amber-300'
+                            : 'bg-white/10 text-slate-300 hover:bg-white/20'
+                        }`}
+                        onClick={() => handleUpdateQueenCount(q)}
+                      >
+                        {q}Q
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         ) : (
@@ -304,14 +354,74 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
                   {currentMode === GameMode.TEAM ? '👥 Team Mode' : '👤 Individual Mode'}
                 </p>
                 <p className="text-[11px] text-slate-400 mt-0.5">
-                  {cardsDealt} Cards per hand • {initialViewable} Initial peeks
+                  {cardsDealt} Cards per hand • {initialViewable} Initial peeks {currentMode === GameMode.TEAM ? `• ${queenCount} Queens` : ''}
                 </p>
               </div>
             </div>
             <span className="text-[10px] font-bold uppercase tracking-wider text-purple-300 bg-purple-500/20 border border-purple-500/30 px-2.5 py-1 rounded-full">
-              Configured by Host
+              Host Settings
             </span>
           </div>
+        )}
+
+        {/* ── Team Selection Grid (Shown to ALL players when in Team Mode) ── */}
+        {currentMode === GameMode.TEAM && (
+          <motion.div
+            className="glass rounded-2xl p-4 mb-4 border border-purple-500/30 bg-[#141724]/95 shadow-xl backdrop-blur-md"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+          >
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-xs font-black text-slate-200 uppercase tracking-wider">
+                Select Your Team
+              </span>
+              <span className="text-[11px] text-purple-300">
+                Tap to join a team
+              </span>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2.5">
+              {TEAM_THEMES.map((theme) => {
+                const teamData = room?.teams.find((t) => t.id === theme.id);
+                const memberCount = teamData?.playerIds.length || 0;
+                const isMyTeam = teamData?.playerIds.includes(myPlayerId || '') || false;
+
+                return (
+                  <button
+                    key={theme.id}
+                    className={`p-3 rounded-xl text-left bg-gradient-to-br ${theme.bg} border ${
+                      isMyTeam ? theme.activeBorder + ' shadow-lg shadow-purple-500/20' : theme.border
+                    } transition-all relative cursor-pointer hover:scale-[1.02] active:scale-[0.98]`}
+                    onClick={() => handleJoinTeam(theme.id)}
+                  >
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className={`text-xs font-black uppercase tracking-wider ${theme.text}`}>
+                        {theme.name}
+                      </span>
+                      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${theme.badge}`}>
+                        {memberCount}/4
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-1 min-h-[28px] flex-wrap">
+                      {teamData?.playerIds.map((pid) => {
+                        const p = room?.players.find((x) => x.id === pid);
+                        return p ? (
+                          <div key={pid} className="flex items-center gap-1 bg-black/40 px-1.5 py-0.5 rounded-full border border-white/10">
+                            <Avatar avatarId={p.avatarId} size={18} />
+                            <span className="text-[10px] text-slate-200 font-bold truncate max-w-[60px]">{p.name}</span>
+                          </div>
+                        ) : null;
+                      })}
+                      {memberCount === 0 && (
+                        <span className="text-[11px] text-slate-500 italic">Empty — Tap to Join</span>
+                      )}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </motion.div>
         )}
 
         {/* ── Connected Players Section ── */}
@@ -354,10 +464,23 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
                     )}
                   </div>
 
-                  <div className="flex items-center gap-1.5 text-xs font-semibold text-emerald-400">
-                    <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                    <span>Online</span>
-                  </div>
+                  {/* Player Ready / Host Status Badge */}
+                  {player.isHost ? (
+                    <div className="flex items-center gap-1.5 text-xs font-bold text-amber-400 bg-amber-500/15 border border-amber-500/30 px-3 py-1 rounded-full shadow-sm">
+                      <span className="w-2 h-2 rounded-full bg-amber-400" />
+                      <span>👑 HOST</span>
+                    </div>
+                  ) : player.isReady ? (
+                    <div className="flex items-center gap-1.5 text-xs font-black text-emerald-400 bg-emerald-500/15 border border-emerald-500/40 px-3 py-1 rounded-full shadow-md shadow-emerald-500/20">
+                      <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                      <span>✓ READY</span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-1.5 text-xs font-bold text-amber-300/90 bg-amber-500/10 border border-amber-500/20 px-3 py-1 rounded-full">
+                      <span className="w-2 h-2 rounded-full bg-amber-400/70" />
+                      <span>⏳ NOT READY</span>
+                    </div>
+                  )}
                 </motion.div>
               ))}
             </AnimatePresence>
