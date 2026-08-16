@@ -5,54 +5,52 @@
    ═══════════════════════════════════════════════════════════ */
 
 :root {
-  /* Surface & Background */
-  --bg-primary: #030712;
-  --bg-surface: #090e1a;
-  --bg-elevated: #0f172a;
-  --bg-glass: rgba(15, 23, 42, 0.75);
+  /* Google Gemini Surface & Background Palette */
+  --bg-primary: #131314;
+  --bg-surface: #1e1f20;
+  --bg-elevated: #282a2c;
+  --bg-glass: rgba(30, 31, 32, 0.85);
 
-  /* Card Table */
-  --table-felt: #071a12;
-  --table-dark: #020610;
+  /* Card Table (Gemini Aurora Dark) */
+  --table-felt: #121926;
+  --table-dark: #131314;
 
-  /* Accents */
-  --accent-gold: #fbbf24;
-  --accent-gold-light: #fde68a;
-  --accent-amber: #f59e0b;
-  --accent-emerald: #10b981;
-  --accent-violet: #a855f7;
-  --accent-rose: #f43f5e;
-  --accent-sky: #38bdf8;
+  /* Gemini Signature Sparkle Multi-Hue Accents */
+  --gemini-blue: #4285f4;
+  --gemini-purple: #9b72cb;
+  --gemini-rose: #d96570;
+  --gemini-gold: #fbbc04;
+  --gemini-teal: #1aa260;
 
-  /* Typography */
-  --text-primary: #f8fafc;
-  --text-secondary: #94a3b8;
-  --text-muted: #64748b;
+  /* Typography (Google Sans / Inter clean text) */
+  --text-primary: #e3e3e3;
+  --text-secondary: #c4c7c5;
+  --text-muted: #8e918f;
 
   /* Borders */
   --border-subtle: rgba(255, 255, 255, 0.08);
-  --border-accent: rgba(251, 191, 36, 0.35);
+  --border-accent: rgba(155, 114, 203, 0.4);
 }
 
 @theme {
-  --color-table-dark: #020610;
-  --color-table-mid: #07111e;
-  --color-table-felt: #071a12;
+  --color-table-dark: #131314;
+  --color-table-mid: #1a1e29;
+  --color-table-felt: #121926;
   
-  --color-accent-gold: #fbbf24;
-  --color-accent-amber: #f59e0b;
-  --color-accent-emerald: #10b981;
-  --color-accent-rose: #f43f5e;
-  --color-accent-violet: #a855f7;
-  --color-accent-sky: #38bdf8;
+  --color-accent-gold: #fbbc04;
+  --color-accent-amber: #f29900;
+  --color-accent-emerald: #1aa260;
+  --color-accent-rose: #d96570;
+  --color-accent-violet: #9b72cb;
+  --color-accent-sky: #4285f4;
   
-  --color-surface-dark: #030712;
-  --color-surface-card: #090e1a;
-  --color-surface-elevated: #0f172a;
+  --color-surface-dark: #131314;
+  --color-surface-card: #1e1f20;
+  --color-surface-elevated: #282a2c;
   
-  --color-text-primary: #f8fafc;
-  --color-text-secondary: #94a3b8;
-  --color-text-muted: #64748b;
+  --color-text-primary: #e3e3e3;
+  --color-text-secondary: #c4c7c5;
+  --color-text-muted: #8e918f;
 }
 
 /* ── Reset & Base ─────────────────────────────────────────── */
@@ -64,9 +62,9 @@
 }
 
 html, body {
-  background-color: #030712;
-  color: #f8fafc;
-  font-family: var(--font-inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif);
+  background-color: #131314;
+  color: #e3e3e3;
+  font-family: var(--font-inter, -apple-system, BlinkMacSystemFont, 'Google Sans', Roboto, sans-serif);
   min-height: 100vh;
   min-height: 100dvh;
   width: 100%;
@@ -85,41 +83,53 @@ input, select, textarea, button {
 .font-display {
   font-family: var(--font-outfit, var(--font-inter, sans-serif));
   font-weight: 800;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.03em;
 }
 
-/* ── Glassmorphism Containers ─────────────────────────────── */
+/* ── Gemini Multi-Color Gradient Text & Accents ──────────── */
+
+.gemini-gradient-text {
+  background: linear-gradient(90deg, #4285f4 0%, #9b72cb 45%, #d96570 75%, #fbbc04 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.gemini-gradient-bg {
+  background: linear-gradient(135deg, #4285f4 0%, #9b72cb 50%, #d96570 100%);
+}
+
+/* ── Glassmorphism Containers (Gemini Surface Style) ──────── */
 
 .glass {
-  background: rgba(9, 14, 26, 0.78);
+  background: rgba(30, 31, 32, 0.85);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 0 10px 35px 0 rgba(0, 0, 0, 0.65);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
 }
 
 .glass-strong {
-  background: rgba(15, 23, 42, 0.9);
+  background: rgba(40, 42, 44, 0.92);
   backdrop-filter: blur(28px);
   -webkit-backdrop-filter: blur(28px);
-  border: 1px solid rgba(251, 191, 36, 0.2);
-  box-shadow: 0 16px 48px 0 rgba(0, 0, 0, 0.8);
+  border: 1px solid rgba(155, 114, 203, 0.3);
+  box-shadow: 0 12px 40px 0 rgba(0, 0, 0, 0.6);
 }
 
 /* ── Button Styles ────────────────────────────────────────── */
 
 .btn-primary {
-  background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 50%, #d97706 100%);
-  color: #0f172a;
+  background: linear-gradient(135deg, #4285f4 0%, #9b72cb 50%, #d96570 100%);
+  color: #ffffff;
   font-weight: 700;
   padding: 14px 28px;
-  border-radius: 14px;
+  border-radius: 9999px;
   border: none;
   cursor: pointer;
-  font-size: 16px;
-  letter-spacing: 0.02em;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 4px 16px rgba(245, 158, 11, 0.35);
+  font-size: 15px;
+  letter-spacing: 0.03em;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 20px rgba(155, 114, 203, 0.35);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -127,8 +137,8 @@ input, select, textarea, button {
 
 .btn-primary:hover:not(:disabled) {
   transform: translateY(-2px);
-  box-shadow: 0 8px 28px rgba(245, 158, 11, 0.5);
-  filter: brightness(1.05);
+  box-shadow: 0 8px 28px rgba(155, 114, 203, 0.55);
+  filter: brightness(1.1);
 }
 
 .btn-primary:active:not(:disabled) {
@@ -136,20 +146,20 @@ input, select, textarea, button {
 }
 
 .btn-primary:disabled {
-  opacity: 0.5;
+  opacity: 0.45;
   cursor: not-allowed;
-  filter: grayscale(0.5);
+  filter: grayscale(0.6);
 }
 
 .btn-secondary {
-  background: rgba(30, 41, 59, 0.8);
-  color: #f8fafc;
+  background: #1e1f20;
+  color: #e3e3e3;
   font-weight: 600;
   padding: 14px 28px;
-  border-radius: 14px;
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
   cursor: pointer;
-  font-size: 16px;
+  font-size: 15px;
   transition: all 0.2s ease;
   display: inline-flex;
   align-items: center;
@@ -157,8 +167,8 @@ input, select, textarea, button {
 }
 
 .btn-secondary:hover:not(:disabled) {
-  background: rgba(51, 65, 85, 0.9);
-  border-color: rgba(255, 255, 255, 0.3);
+  background: #2a2b2d;
+  border-color: rgba(255, 255, 255, 0.25);
   transform: translateY(-2px);
 }
 
@@ -167,28 +177,28 @@ input, select, textarea, button {
 }
 
 .btn-secondary:disabled {
-  opacity: 0.5;
+  opacity: 0.4;
   cursor: not-allowed;
 }
 
 .btn-pandu {
-  background: linear-gradient(135deg, #7c3aed 0%, #8b5cf6 50%, #a855f7 100%);
+  background: linear-gradient(135deg, #7c3aed 0%, #9b72cb 45%, #d96570 80%, #fbbc04 100%);
   color: #ffffff;
   font-weight: 900;
   padding: 16px 44px;
-  border-radius: 18px;
-  border: 2px solid rgba(168, 85, 247, 0.6);
+  border-radius: 9999px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
   cursor: pointer;
-  font-size: 20px;
-  letter-spacing: 0.12em;
+  font-size: 18px;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
-  transition: all 0.2s ease;
-  box-shadow: 0 6px 25px rgba(139, 92, 246, 0.45);
+  transition: all 0.25s ease;
+  box-shadow: 0 6px 30px rgba(155, 114, 203, 0.5);
 }
 
 .btn-pandu:hover:not(:disabled) {
   transform: translateY(-3px) scale(1.03);
-  box-shadow: 0 10px 40px rgba(168, 85, 247, 0.7);
+  box-shadow: 0 10px 45px rgba(217, 101, 112, 0.65);
   filter: brightness(1.1);
 }
 
@@ -204,7 +214,7 @@ input, select, textarea, button {
 /* ── Card Table ───────────────────────────────────────────── */
 
 .game-table {
-  background: radial-gradient(ellipse at 50% 40%, #164e35 0%, #0c2b1d 45%, #071220 85%);
+  background: radial-gradient(ellipse at 50% 35%, #161c28 0%, #131720 50%, #131314 90%);
   min-height: 100vh;
   min-height: 100dvh;
   width: 100%;
@@ -216,7 +226,7 @@ input, select, textarea, button {
   content: '';
   position: absolute;
   inset: 0;
-  background: radial-gradient(circle at 50% 25%, rgba(16, 185, 129, 0.1) 0%, transparent 60%);
+  background: radial-gradient(circle at 50% 20%, rgba(155, 114, 203, 0.08) 0%, transparent 60%);
   pointer-events: none;
 }
 

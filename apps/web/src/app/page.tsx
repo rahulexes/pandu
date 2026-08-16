@@ -115,24 +115,25 @@ export default function HomePage() {
   }, [roomCode, name, avatarId, router]);
 
   return (
-    <div className="min-h-dvh flex flex-col items-center justify-center p-6 relative overflow-hidden bg-[#030712] text-slate-100">
-      {/* Dynamic ambient background glows */}
-      <div className="absolute inset-0 bg-radial from-[#0d1a29]/70 via-[#030712] to-[#010409] opacity-95 pointer-events-none" />
-      <div className="absolute -top-40 -left-40 w-[500px] h-[500px] rounded-full bg-amber-500/10 blur-[120px] pointer-events-none" />
-      <div className="absolute top-1/2 -right-40 w-[500px] h-[500px] rounded-full bg-violet-600/10 blur-[120px] pointer-events-none" />
+    <div className="min-h-dvh flex flex-col items-center justify-center p-6 relative overflow-hidden bg-[#131314] text-[#e3e3e3]">
+      {/* Google Gemini Signature Aurora Background Glows */}
+      <div className="absolute inset-0 bg-radial from-[#1e1f2b]/40 via-[#131314] to-[#0e0e10] opacity-95 pointer-events-none" />
+      <div className="absolute -top-40 -left-40 w-[500px] h-[500px] rounded-full bg-[#4285f4]/15 blur-[140px] pointer-events-none" />
+      <div className="absolute top-1/3 -right-40 w-[500px] h-[500px] rounded-full bg-[#9b72cb]/15 blur-[140px] pointer-events-none" />
+      <div className="absolute -bottom-40 left-1/3 w-[500px] h-[500px] rounded-full bg-[#d96570]/12 blur-[140px] pointer-events-none" />
 
       {/* ── Top Permanent Profile Bar ── */}
       <div className="absolute top-6 left-6 right-6 flex items-center justify-between z-20 max-w-md mx-auto">
-        <div className="flex items-center gap-3 bg-white/5 hover:bg-white/10 backdrop-blur-xl px-4 py-2 rounded-2xl border border-white/10 shadow-lg shadow-black/50 transition-all">
-          <Avatar avatarId={avatarId} size={36} />
+        <div className="flex items-center gap-3 bg-[#1e1f20] hover:bg-[#282a2c] px-4 py-2 rounded-full border border-white/10 shadow-lg transition-all">
+          <Avatar avatarId={avatarId} size={34} />
           <div className="text-left">
-            <p className="text-xs font-bold text-slate-100 truncate max-w-[120px]">{name || 'Player'}</p>
-            <p className="text-[10px] text-amber-400 font-bold uppercase tracking-wider">Profile</p>
+            <p className="text-xs font-bold text-[#e3e3e3] truncate max-w-[120px]">{name || 'Player'}</p>
+            <p className="text-[10px] text-[#9b72cb] font-bold uppercase tracking-wider">Device Profile</p>
           </div>
         </div>
 
         <button
-          className="p-2.5 rounded-2xl bg-white/5 hover:bg-white/10 text-slate-200 hover:text-white border border-white/10 shadow-lg shadow-black/50 transition-all cursor-pointer flex items-center gap-1.5 text-xs font-bold"
+          className="p-2.5 rounded-full bg-[#1e1f20] hover:bg-[#282a2c] text-[#c4c7c5] hover:text-white border border-white/10 shadow-lg transition-all cursor-pointer flex items-center gap-1.5 text-xs font-bold"
           onClick={() => {
             soundEngine.playCardFlip();
             setShowSettings(true);
@@ -148,23 +149,29 @@ export default function HomePage() {
         initial={{ opacity: 0, y: 30 }}
         animate={{ opacity: 1, y: 0 }}
       >
-        {/* Glowing Logo */}
+        {/* Gemini Sparkling Logo */}
         <div className="text-center mb-8">
-          <div className="inline-block relative">
-            <h1 className="font-display text-6xl sm:text-7xl tracking-widest bg-gradient-to-r from-amber-200 via-amber-400 to-amber-500 bg-clip-text text-transparent drop-shadow-[0_4px_30px_rgba(245,158,11,0.45)]">
+          <div className="inline-flex items-center justify-center gap-2">
+            <span className="text-3xl bg-gradient-to-r from-[#4285f4] via-[#9b72cb] to-[#d96570] bg-clip-text text-transparent animate-pulse select-none">
+              ✦
+            </span>
+            <h1 className="font-display text-6xl sm:text-7xl tracking-wide bg-gradient-to-r from-[#4285f4] via-[#9b72cb] to-[#d96570] bg-clip-text text-transparent drop-shadow-[0_4px_30px_rgba(155,114,203,0.4)]">
               PANDU
             </h1>
+            <span className="text-3xl bg-gradient-to-r from-[#9b72cb] via-[#d96570] to-[#fbbc04] bg-clip-text text-transparent animate-pulse select-none">
+              ✦
+            </span>
           </div>
-          <p className="text-slate-400 text-xs mt-2.5 font-black tracking-[0.35em] uppercase">
-            Multiplayer Online Card Game
+          <p className="text-[#8e918f] text-xs mt-2 font-bold tracking-[0.25em] uppercase">
+            Multiplayer Card Game
           </p>
         </div>
 
         {/* Server Connection Status */}
-        <div className="flex items-center justify-center gap-2 mb-6 bg-black/40 border border-white/5 py-1.5 px-4 rounded-full w-fit mx-auto shadow-inner">
-          <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
-          <span className="text-[11px] font-bold text-slate-300 tracking-wide">
-            Realtime Cloud Multiplayer Ready
+        <div className="flex items-center justify-center gap-2 mb-6 bg-[#1e1f20] border border-white/10 py-1.5 px-4 rounded-full w-fit mx-auto shadow-sm">
+          <div className="w-2 h-2 rounded-full bg-[#1aa260] animate-pulse shadow-[0_0_8px_rgba(26,162,96,0.8)]" />
+          <span className="text-[11px] font-semibold text-[#c4c7c5] tracking-wide">
+            Realtime Cloud Multiplayer Active
           </span>
         </div>
 
@@ -176,24 +183,24 @@ export default function HomePage() {
               initial={{ opacity: 0, y: 15 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -15 }}
-              className="space-y-4"
+              className="space-y-3.5"
             >
               <button
-                className="btn-primary w-full py-4 text-lg font-black tracking-wider cursor-pointer shadow-xl"
+                className="btn-primary w-full py-4 text-base font-bold tracking-wide cursor-pointer shadow-xl rounded-full"
                 onClick={handleCreateRoom}
                 disabled={loading}
               >
-                {loading ? 'Creating VIP Room...' : '✨ CREATE PRIVATE ROOM'}
+                {loading ? 'Creating Gemini Room...' : '✨ CREATE PRIVATE ROOM'}
               </button>
 
               <button
-                className="btn-secondary w-full py-4 text-lg font-black tracking-wider cursor-pointer"
+                className="btn-secondary w-full py-4 text-base font-bold tracking-wide cursor-pointer rounded-full"
                 onClick={() => {
                   soundEngine.playCardFlip();
                   setMode('join');
                 }}
               >
-                🔗 JOIN WITH ROOM CODE
+                🔗 JOIN WITH CODE
               </button>
             </motion.div>
           )}
@@ -207,7 +214,7 @@ export default function HomePage() {
               className="space-y-4"
             >
               <button
-                className="text-xs text-slate-400 hover:text-white flex items-center gap-1 mb-2 cursor-pointer"
+                className="text-xs text-[#c4c7c5] hover:text-white flex items-center gap-1 mb-2 cursor-pointer font-semibold"
                 onClick={() => {
                   soundEngine.playCardFlip();
                   setMode('home');
@@ -217,14 +224,14 @@ export default function HomePage() {
                 ← Back to Home
               </button>
 
-              <div className="glass rounded-2xl p-6 border border-white/10 space-y-4">
-                <h2 className="font-display text-lg text-center text-slate-200">
-                  Join Private Room
+              <div className="glass rounded-3xl p-6 border border-white/10 space-y-4">
+                <h2 className="font-display text-lg text-center text-[#e3e3e3]">
+                  Enter Room Code
                 </h2>
 
                 <div>
-                  <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 block">
-                    6-Character Room Code
+                  <label className="text-[11px] font-bold text-[#8e918f] uppercase tracking-wider mb-1.5 block">
+                    6-Letter Room Code
                   </label>
                   <input
                     type="text"
@@ -232,18 +239,18 @@ export default function HomePage() {
                     onChange={(e) => setRoomCode(e.target.value.toUpperCase())}
                     placeholder="e.g. QK5ZPG"
                     maxLength={6}
-                    className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3.5 text-white placeholder:text-slate-600 focus:outline-none focus:border-amber-400 text-center tracking-[0.3em] text-2xl font-mono font-bold uppercase transition-all"
+                    className="w-full bg-[#131314] border border-white/15 rounded-2xl px-4 py-3.5 text-white placeholder:text-[#8e918f] focus:outline-none focus:border-[#9b72cb] text-center tracking-[0.3em] text-2xl font-mono font-bold uppercase transition-all"
                   />
                 </div>
 
                 {error && (
-                  <div className="text-xs text-rose-400 text-center bg-rose-500/10 border border-rose-500/20 rounded-xl py-2 px-3">
+                  <div className="text-xs text-rose-400 text-center bg-rose-500/10 border border-rose-500/20 rounded-2xl py-2 px-3 font-semibold">
                     ⚠️ {error}
                   </div>
                 )}
 
                 <button
-                  className="btn-primary w-full py-3.5 text-base font-black tracking-wider cursor-pointer"
+                  className="btn-primary w-full py-3.5 text-base font-bold tracking-wide cursor-pointer rounded-full"
                   onClick={handleJoinRoom}
                   disabled={loading}
                 >

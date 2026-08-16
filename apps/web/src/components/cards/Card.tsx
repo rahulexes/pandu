@@ -213,31 +213,35 @@ function CardBack({ dims }: { dims: typeof SIZE_MAP.md }) {
     <div
       className="w-full h-full relative overflow-hidden flex items-center justify-center"
       style={{
-        background: 'linear-gradient(145deg, #070e1b 0%, #0d1a30 50%, #050a14 100%)',
+        background: 'linear-gradient(145deg, #1e1f20 0%, #131314 100%)',
         borderRadius: dims.radius,
-        border: '1.5px solid rgba(251, 191, 36, 0.4)',
-        boxShadow: 'inset 0 0 12px rgba(0, 0, 0, 0.8)',
+        border: '1.5px solid rgba(155, 114, 203, 0.4)',
+        boxShadow: 'inset 0 0 14px rgba(0, 0, 0, 0.6)',
       }}
     >
-      {/* Outer gold pinstripe frame */}
-      <div className="absolute inset-1.5 rounded-sm border border-amber-400/40 flex items-center justify-center pointer-events-none">
-        {/* Inner geometric gold frame */}
-        <div className="w-[82%] h-[82%] rounded-sm border border-amber-400/25 flex flex-col items-center justify-center relative bg-black/30">
-          <span className="text-amber-300 drop-shadow-[0_2px_8px_rgba(245,158,11,0.6)] select-none" style={{ fontSize: dims.fontSize * 1.3 }}>
-            👑
+      {/* Outer Gemini Aurora Frame */}
+      <div className="absolute inset-1.5 rounded-sm border border-white/10 flex items-center justify-center pointer-events-none">
+        {/* Inner Dark Chip */}
+        <div className="w-[82%] h-[82%] rounded-sm border border-violet-500/20 flex flex-col items-center justify-center relative bg-[#18191a]/80">
+          {/* Gemini 4-Point Sparkle Star */}
+          <span
+            className="select-none bg-gradient-to-r from-[#4285f4] via-[#9b72cb] to-[#d96570] bg-clip-text text-transparent drop-shadow-[0_0_10px_rgba(155,114,203,0.8)] font-black text-center leading-none"
+            style={{ fontSize: dims.fontSize * 1.5 }}
+          >
+            ✦
           </span>
-          <span className="text-[8px] font-black tracking-widest uppercase text-amber-400/70 font-mono mt-0.5">
+          <span className="text-[7.5px] font-black tracking-widest uppercase bg-gradient-to-r from-blue-400 via-purple-400 to-rose-400 bg-clip-text text-transparent font-mono mt-1">
             PANDU
           </span>
         </div>
       </div>
 
-      {/* Cyber Diamond Pattern Overlay */}
+      {/* Subtle Gemini Particle Shimmer Overlay */}
       <div
-        className="absolute inset-0 opacity-15 pointer-events-none"
+        className="absolute inset-0 opacity-10 pointer-events-none"
         style={{
-          backgroundImage: `radial-gradient(circle at 50% 50%, rgba(251, 191, 36, 0.2) 1px, transparent 1px)`,
-          backgroundSize: '8px 8px',
+          backgroundImage: `radial-gradient(circle at 50% 50%, rgba(155, 114, 203, 0.4) 1px, transparent 1px)`,
+          backgroundSize: '10px 10px',
         }}
       />
     </div>
@@ -276,10 +280,10 @@ export function DeckStack({
             height: 104,
             top: -i * 2,
             left: i * 0.5,
-            background: 'linear-gradient(145deg, #070e1b, #0d1a30)',
+            background: 'linear-gradient(145deg, #1e1f20, #131314)',
             borderRadius: 8,
-            border: '1.5px solid rgba(251, 191, 36, 0.35)',
-            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.7)',
+            border: '1.5px solid rgba(155, 114, 203, 0.35)',
+            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.6)',
           }}
         />
       ))}
