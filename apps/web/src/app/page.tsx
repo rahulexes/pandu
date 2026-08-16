@@ -118,17 +118,20 @@ export default function HomePage() {
   }, [roomCode, name, avatarId, router]);
 
   return (
-    <div className="min-h-dvh flex flex-col justify-between p-4 sm:p-6 relative overflow-hidden bg-[#0c101b] text-slate-100 select-none">
-      {/* Ambient background glows */}
-      <div className="absolute inset-0 bg-radial from-[#151c2e]/60 via-[#0c101b] to-[#070a12] opacity-95 pointer-events-none" />
-      <div className="absolute -top-40 -left-40 w-[450px] h-[450px] rounded-full bg-[#38bdf8]/10 blur-[140px] pointer-events-none" />
-      <div className="absolute top-1/2 -right-40 w-[450px] h-[450px] rounded-full bg-[#c084fc]/10 blur-[140px] pointer-events-none" />
-      <div className="absolute -bottom-40 left-1/3 w-[450px] h-[450px] rounded-full bg-[#f472b6]/10 blur-[140px] pointer-events-none" />
+    <div className="min-h-dvh flex flex-col justify-between p-4 sm:p-6 relative overflow-hidden bg-[#0a0d14] text-slate-100 select-none">
+      {/* Three.js 3D Fullscreen Floating Cards Background */}
+      <ThreeHeroCards />
+
+      {/* Softer low-contrast ambient background glows */}
+      <div className="absolute inset-0 bg-radial from-[#121624]/40 via-[#0a0d14]/80 to-[#07090f] opacity-90 pointer-events-none z-0" />
+      <div className="absolute -top-40 -left-40 w-[500px] h-[500px] rounded-full bg-[#38bdf8]/8 blur-[160px] pointer-events-none z-0" />
+      <div className="absolute top-1/2 -right-40 w-[500px] h-[500px] rounded-full bg-[#c084fc]/8 blur-[160px] pointer-events-none z-0" />
+      <div className="absolute -bottom-40 left-1/3 w-[500px] h-[500px] rounded-full bg-[#f472b6]/8 blur-[160px] pointer-events-none z-0" />
 
       {/* ── Top Bar (Device Profile & Settings) ── */}
-      <header className="relative z-20 flex items-center justify-between w-full max-w-md mx-auto pt-2">
+      <header className="relative z-20 flex items-center justify-between w-full max-w-md mx-auto pt-2 pointer-events-auto">
         {/* Left Profile Chip */}
-        <div className="flex items-center gap-3 bg-[#182033]/80 hover:bg-[#202b44] backdrop-blur-xl pl-2 pr-5 py-2 rounded-full border border-white/10 shadow-lg shadow-black/40 transition-all">
+        <div className="flex items-center gap-3 bg-[#131722]/80 hover:bg-[#1c2233] backdrop-blur-xl pl-2 pr-5 py-2 rounded-full border border-white/10 shadow-lg shadow-black/40 transition-all">
           <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-purple-600 to-pink-500 flex items-center justify-center p-0.5 shadow-md shadow-pink-500/20">
             <Avatar avatarId={avatarId} size={36} />
           </div>
@@ -144,7 +147,7 @@ export default function HomePage() {
 
         {/* Right Settings Button */}
         <button
-          className="px-4 py-2.5 rounded-full bg-[#182033]/80 hover:bg-[#202b44] text-slate-200 hover:text-white border border-white/10 shadow-lg shadow-black/40 transition-all cursor-pointer flex items-center gap-1.5 text-xs font-bold"
+          className="px-4 py-2.5 rounded-full bg-[#131722]/80 hover:bg-[#1c2233] text-slate-200 hover:text-white border border-white/10 shadow-lg shadow-black/40 transition-all cursor-pointer flex items-center gap-1.5 text-xs font-bold"
           onClick={() => {
             soundEngine.playCardFlip();
             setSettingsTab('profile');
@@ -155,42 +158,36 @@ export default function HomePage() {
         </button>
       </header>
 
-      {/* ── Central Hero Section with 3D Floating Three.js Cards ── */}
-      <main className="relative z-10 flex-1 flex flex-col items-center justify-center max-w-md mx-auto w-full my-auto">
-        <div className="relative w-full flex items-center justify-center">
-          {/* 3D Three.js Interactive Floating Cards Scene */}
-          <ThreeHeroCards />
+      {/* ── Central Hero Logo (Overlaying 3D floating cards) ── */}
+      <main className="relative z-10 flex-1 flex flex-col items-center justify-center max-w-md mx-auto w-full my-auto pointer-events-none">
+        <div className="flex flex-col items-center justify-center">
+          {/* Jewel Crown Icon */}
+          <motion.div
+            className="text-5xl sm:text-6xl mb-1 filter drop-shadow-[0_4px_16px_rgba(251,191,36,0.45)] select-none"
+            animate={{ y: [0, -5, 0] }}
+            transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
+          >
+            👑
+          </motion.div>
 
-          {/* Central Overlay Logo (Crown + PANDU + Subtitle) */}
-          <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none z-20">
-            {/* Jewel Crown Icon */}
-            <motion.div
-              className="text-4xl sm:text-5xl mb-1 filter drop-shadow-[0_4px_12px_rgba(251,191,36,0.5)] select-none"
-              animate={{ y: [0, -4, 0] }}
-              transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
-            >
-              👑
-            </motion.div>
-
-            {/* PANDU Gradient Title with Sparkles */}
-            <div className="flex items-center justify-center gap-2">
-              <span className="text-xl sm:text-2xl text-[#38bdf8] animate-pulse">✦</span>
-              <h1 className="font-display text-5xl sm:text-6xl font-black tracking-wider bg-gradient-to-r from-[#38bdf8] via-[#c084fc] to-[#f472b6] bg-clip-text text-transparent drop-shadow-[0_4px_30px_rgba(192,132,252,0.5)]">
-                PANDU
-              </h1>
-              <span className="text-xl sm:text-2xl text-[#f472b6] animate-pulse">✦</span>
-            </div>
-
-            {/* Subtext */}
-            <p className="text-slate-400 text-[10px] sm:text-xs mt-1.5 font-black tracking-[0.28em] uppercase text-center">
-              Multiplayer Card Game
-            </p>
+          {/* PANDU Gradient Title with Sparkles */}
+          <div className="flex items-center justify-center gap-2">
+            <span className="text-2xl sm:text-3xl text-[#38bdf8] animate-pulse">✦</span>
+            <h1 className="font-display text-6xl sm:text-7xl font-black tracking-wider bg-gradient-to-r from-[#38bdf8] via-[#c084fc] to-[#f472b6] bg-clip-text text-transparent drop-shadow-[0_4px_30px_rgba(192,132,252,0.45)]">
+              PANDU
+            </h1>
+            <span className="text-2xl sm:text-3xl text-[#f472b6] animate-pulse">✦</span>
           </div>
+
+          {/* Subtext */}
+          <p className="text-slate-400 text-xs sm:text-sm mt-1 font-black tracking-[0.3em] uppercase text-center">
+            Multiplayer Card Game
+          </p>
         </div>
       </main>
 
-      {/* ── Bottom Interactive Action Buttons ── */}
-      <footer className="relative z-20 w-full max-w-md mx-auto pb-4">
+      {/* ── Bottom Interactive Action Buttons (Bigger & Prominent) ── */}
+      <footer className="relative z-20 w-full max-w-md mx-auto pb-4 pointer-events-auto">
         <AnimatePresence mode="wait">
           {mode === 'home' && (
             <motion.div
@@ -198,27 +195,27 @@ export default function HomePage() {
               initial={{ opacity: 0, y: 15 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -15 }}
-              className="space-y-3.5"
+              className="space-y-4"
             >
               {/* Primary Gradient Pill: CREATE PRIVATE ROOM */}
               <button
-                className="w-full py-4 px-6 rounded-full font-black text-sm sm:text-base tracking-wider text-white bg-gradient-to-r from-[#0ea5e9] via-[#a855f7] to-[#f43f5e] shadow-xl shadow-purple-500/25 hover:shadow-purple-500/40 hover:brightness-110 active:scale-[0.98] transition-all cursor-pointer flex items-center justify-center gap-2"
+                className="w-full py-4.5 sm:py-5 px-8 rounded-full font-black text-base sm:text-lg tracking-wider text-white bg-gradient-to-r from-[#0ea5e9] via-[#a855f7] to-[#f43f5e] shadow-2xl shadow-purple-500/30 hover:shadow-purple-500/50 hover:brightness-110 active:scale-[0.98] transition-all cursor-pointer flex items-center justify-center gap-2.5 border border-white/20"
                 onClick={handleCreateRoom}
                 disabled={loading}
               >
-                <span>✨</span>
+                <span className="text-lg">✨</span>
                 <span>{loading ? 'CREATING ROOM...' : 'CREATE PRIVATE ROOM'}</span>
               </button>
 
               {/* Secondary Translucent Pill: JOIN WITH CODE */}
               <button
-                className="w-full py-4 px-6 rounded-full font-bold text-sm sm:text-base tracking-wider text-slate-200 bg-[#182033]/80 hover:bg-[#202b44] border border-white/15 hover:border-white/25 shadow-lg shadow-black/40 active:scale-[0.98] transition-all cursor-pointer flex items-center justify-center gap-2"
+                className="w-full py-4.5 sm:py-5 px-8 rounded-full font-bold text-base sm:text-lg tracking-wider text-slate-200 bg-[#131722]/85 hover:bg-[#1c2233] border border-white/15 hover:border-white/25 shadow-xl shadow-black/50 active:scale-[0.98] transition-all cursor-pointer flex items-center justify-center gap-2.5 backdrop-blur-xl"
                 onClick={() => {
                   soundEngine.playCardFlip();
                   setMode('join');
                 }}
               >
-                <span>🔗</span>
+                <span className="text-lg">🔗</span>
                 <span>JOIN WITH CODE</span>
               </button>
             </motion.div>
@@ -255,7 +252,7 @@ export default function HomePage() {
                     onChange={(e) => setRoomCode(e.target.value.toUpperCase())}
                     placeholder="e.g. QK5ZPG"
                     maxLength={6}
-                    className="w-full bg-[#0c101b] border border-white/15 rounded-2xl px-4 py-3.5 text-white placeholder:text-slate-600 focus:outline-none focus:border-[#c084fc] text-center tracking-[0.3em] text-2xl font-mono font-black uppercase transition-all shadow-inner"
+                    className="w-full bg-[#0c101b] border border-white/15 rounded-2xl px-4 py-4 text-white placeholder:text-slate-600 focus:outline-none focus:border-[#c084fc] text-center tracking-[0.3em] text-2xl font-mono font-black uppercase transition-all shadow-inner"
                   />
                 </div>
 
@@ -266,7 +263,7 @@ export default function HomePage() {
                 )}
 
                 <button
-                  className="w-full py-3.5 px-6 rounded-full font-black text-sm tracking-wider text-white bg-gradient-to-r from-[#0ea5e9] to-[#f43f5e] shadow-lg shadow-purple-500/30 hover:brightness-110 active:scale-[0.98] transition-all cursor-pointer flex items-center justify-center gap-2"
+                  className="w-full py-4.5 px-6 rounded-full font-black text-base tracking-wider text-white bg-gradient-to-r from-[#0ea5e9] to-[#f43f5e] shadow-xl shadow-purple-500/30 hover:brightness-110 active:scale-[0.98] transition-all cursor-pointer flex items-center justify-center gap-2"
                   onClick={handleJoinRoom}
                   disabled={loading}
                 >
