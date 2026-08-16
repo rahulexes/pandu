@@ -1,5 +1,5 @@
 // ============================================================
-// PANDU — P2P WebRTC Manager (PeerJS)
+// PANDU — Robust P2P WebRTC Manager (PeerJS)
 // ============================================================
 // Enables 100% Serverless, Vercel-hosted Multiplayer via WebRTC.
 // Host client runs the authoritative Room engine locally in-browser.
@@ -9,18 +9,31 @@ import { Room } from '@pandu/shared';
 import type {
   ClientToServerEvents,
   ServerToClientEvents,
-  ClientGameState,
-  ClientRoomState,
   RoomResponse,
 } from '@pandu/shared';
 
 type EventListener = (...args: any[]) => void;
 
-const PEER_PREFIX = 'pandu-game-v1-';
+const PEER_PREFIX = 'pandu-game-v2-';
+
+const PEER_CONFIG = {
+  debug: 1,
+  config: {
+    iceServers: [
+      { urls: 'stun:stun.l.google.com:19302' },
+      { urls: 'stun:stun1.l.google.com:19302' },
+      { urls: 'stun:stun2.l.google.com:19302' },
+      { urls: 'stun:stun3.l.google.com:19302' },
+      { urls: 'stun:stun4.l.google.com:19302' },
+      { urls: 'stun:global.stun.twilio.com:3478' },
+    ],
+  },
+};
 
 export class P2PManager {
   private peer: any = null;
   private isHost: boolean = false;
+  private currentRoomCode: string | null = null;
   private room: Room | null = null;
   private connections: Map<string, any> = new Map(); // peerId -> DataConnection
   private playerPeerMap: Map<string, string> = new Map(); // playerId -> peerId
@@ -57,12 +70,26 @@ export class P2PManager {
     }
   }
 
-  /**
-   * Helper to dynamically import PeerJS in browser environment.
-   */
   private async getPeerClass(): Promise<any> {
     const module = await import('peerjs');
     return module.default || module.Peer;
+  }
+
+  private destroyExistingPeer(): void {
+    if (this.peer) {
+      try {
+        this.peer.destroy();
+      } catch {
+        // Ignore
+      }
+      this.peer = null;
+    }
+    this.connections.clear();
+    this.playerPeerMap.clear();
+    this.peerPlayerMap.clear();
+    this.hostConnection = null;
+    this.room = null;
+    this.isConnected = false;
   }
 
   // ════════════════════════════════════════════════════════════
@@ -71,6 +98,8 @@ export class P2PManager {
 
   async createRoom(playerName: string, avatarId: number): Promise<RoomResponse> {
     try {
+      this.destroyExistingPeer();
+
       const PeerClass = await this.getPeerClass();
       const codeChars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
       let code = '';
@@ -79,19 +108,23 @@ export class P2PManager {
       }
 
       const hostPeerId = `${PEER_PREFIX}${code}`;
+      this.currentRoomCode = code;
 
       return new Promise<RoomResponse>((resolve) => {
-        this.peer = new PeerClass(hostPeerId, {
-          debug: 1,
-          config: {
-            iceServers: [
-              { urls: 'stun:stun.l.google.com:19302' },
-              { urls: 'stun:global.stun.twilio.com:3478' },
-            ],
-          },
+        let resolved = false;
+
+        const peer = new PeerClass(hostPeerId, PEER_CONFIG);
+        this.peer = peer;
+
+        // Attach incoming connection listener immediately
+        peer.on('connection', (conn: any) => {
+          this.handleIncomingConnectionOnHost(conn);
         });
 
-        this.peer.on('open', (id: string) => {
+        peer.on('open', (id: string) => {
+          if (resolved) return;
+          resolved = true;
+
           this.isHost = true;
           this.isConnected = true;
           this.emitLocal('connect');
@@ -110,8 +143,6 @@ export class P2PManager {
           this.playerPeerMap.set(player.id, hostPeerId);
           this.peerPlayerMap.set(hostPeerId, player.id);
 
-          this.setupHostListeners();
-
           resolve({
             success: true,
             roomCode: code,
@@ -122,12 +153,12 @@ export class P2PManager {
           this.room.broadcastRoomState();
         });
 
-        this.peer.on('error', (err: any) => {
+        peer.on('error', (err: any) => {
           console.error('[P2P HOST ERROR]', err);
           if (err.type === 'unavailable-id') {
-            // Retry with new code if collision
             resolve(this.createRoom(playerName, avatarId));
-          } else {
+          } else if (!resolved) {
+            resolved = true;
             resolve({ success: false, error: err.message || 'Failed to initialize peer' });
           }
         });
@@ -137,13 +168,9 @@ export class P2PManager {
     }
   }
 
-  private setupHostListeners(): void {
-    if (!this.peer) return;
-
-    this.peer.on('connection', (conn: any) => {
-      conn.on('open', () => {
-        this.connections.set(conn.peer, conn);
-      });
+  private handleIncomingConnectionOnHost(conn: any): void {
+    const attachHandlers = () => {
+      this.connections.set(conn.peer, conn);
 
       conn.on('data', (payload: any) => {
         this.handleGuestMessageOnHost(conn, payload);
@@ -156,7 +183,13 @@ export class P2PManager {
       conn.on('error', (err: any) => {
         console.error('[P2P CONN ERROR]', err);
       });
-    });
+    };
+
+    if (conn.open) {
+      attachHandlers();
+    } else {
+      conn.on('open', attachHandlers);
+    }
   }
 
   private handleGuestDisconnect(peerId: string): void {
@@ -184,7 +217,11 @@ export class P2PManager {
 
       const conn = this.connections.get(peerId);
       if (conn && conn.open) {
-        conn.send({ event, data });
+        try {
+          conn.send({ event, data });
+        } catch (err) {
+          console.error('[P2P BROADCAST ERROR]', err);
+        }
       }
     }
   }
@@ -195,39 +232,65 @@ export class P2PManager {
 
   async joinRoom(roomCode: string, playerName: string, avatarId: number, sessionToken?: string): Promise<RoomResponse> {
     try {
+      const cleanCode = roomCode.toUpperCase().trim();
+
+      // If already connected to this room, reuse existing connection
+      if (this.isConnected && this.currentRoomCode === cleanCode && this.hostConnection) {
+        return {
+          success: true,
+          roomCode: cleanCode,
+          sessionToken: sessionStorage.getItem('pandu_session') || undefined,
+          playerId: sessionStorage.getItem('pandu_player_id') || undefined,
+        };
+      }
+
+      this.destroyExistingPeer();
+      this.currentRoomCode = cleanCode;
+
       const PeerClass = await this.getPeerClass();
-      const hostPeerId = `${PEER_PREFIX}${roomCode.toUpperCase().trim()}`;
+      const hostPeerId = `${PEER_PREFIX}${cleanCode}`;
 
       return new Promise<RoomResponse>((resolve) => {
-        this.peer = new PeerClass({
-          debug: 1,
-          config: {
-            iceServers: [
-              { urls: 'stun:stun.l.google.com:19302' },
-              { urls: 'stun:global.stun.twilio.com:3478' },
-            ],
-          },
-        });
+        let resolved = false;
 
-        this.peer.on('open', (myPeerId: string) => {
+        const timeout = setTimeout(() => {
+          if (!resolved) {
+            resolved = true;
+            resolve({ success: false, error: `Room "${cleanCode}" not found. Ensure Host has the room open!` });
+          }
+        }, 12000);
+
+        const peer = new PeerClass(PEER_CONFIG);
+        this.peer = peer;
+
+        peer.on('open', (myPeerId: string) => {
           this.isHost = false;
-          const conn = this.peer.connect(hostPeerId, { reliable: true });
+          const conn = peer.connect(hostPeerId, { reliable: true });
           this.hostConnection = conn;
 
-          conn.on('open', () => {
+          const sendJoin = () => {
             this.isConnected = true;
             this.emitLocal('connect');
 
-            // Send Join Request to Host
             conn.send({
               action: 'room:join',
-              payload: { roomCode: roomCode.toUpperCase().trim(), playerName, avatarId, sessionToken },
+              payload: { roomCode: cleanCode, playerName, avatarId, sessionToken },
             });
-          });
+          };
+
+          if (conn.open) {
+            sendJoin();
+          } else {
+            conn.on('open', sendJoin);
+          }
 
           conn.on('data', (msg: any) => {
             if (msg.type === 'join_response') {
-              resolve(msg.response);
+              if (!resolved) {
+                resolved = true;
+                clearTimeout(timeout);
+                resolve(msg.response);
+              }
               return;
             }
 
@@ -242,14 +305,22 @@ export class P2PManager {
           });
 
           conn.on('error', (err: any) => {
-            console.error('[P2P GUEST ERROR]', err);
-            resolve({ success: false, error: 'Could not connect to room host.' });
+            console.error('[P2P GUEST CONN ERROR]', err);
+            if (!resolved) {
+              resolved = true;
+              clearTimeout(timeout);
+              resolve({ success: false, error: 'Could not connect to room host.' });
+            }
           });
         });
 
-        this.peer.on('error', (err: any) => {
-          console.error('[P2P PEER ERROR]', err);
-          resolve({ success: false, error: 'Room host not found. Check the code and try again.' });
+        peer.on('error', (err: any) => {
+          console.error('[P2P GUEST PEER ERROR]', err);
+          if (!resolved) {
+            resolved = true;
+            clearTimeout(timeout);
+            resolve({ success: false, error: `Room "${cleanCode}" not found. Verify the code and try again.` });
+          }
         });
       });
     } catch (err: any) {
@@ -267,15 +338,21 @@ export class P2PManager {
       if (!hostPlayerId) return;
       this.executeActionOnHost(hostPlayerId, action, data);
     } else if (this.hostConnection && this.hostConnection.open) {
-      this.hostConnection.send({
-        action,
-        data,
-      });
+      try {
+        this.hostConnection.send({
+          action,
+          data,
+        });
+      } catch (err) {
+        console.error('[P2P SEND ERROR]', err);
+      }
     }
   }
 
   private handleGuestMessageOnHost(conn: any, payload: any): void {
     if (!this.room) return;
+
+    this.connections.set(conn.peer, conn);
 
     if (payload.action === 'room:join') {
       const { playerName, avatarId, sessionToken } = payload.payload || {};

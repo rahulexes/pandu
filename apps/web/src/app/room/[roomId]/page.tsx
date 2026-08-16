@@ -50,11 +50,13 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
     }
   }, [phase, roomId, router]);
 
-  // Auto-join if directly navigated via URL link
+  // Auto-join if directly navigated via URL link (e.g. pasted invite link)
   useEffect(() => {
-    if (!room) {
-      const name = sessionStorage.getItem('pandu_name') || `Player_${Math.floor(Math.random() * 900 + 100)}`;
-      const avatar = parseInt(sessionStorage.getItem('pandu_avatar') || '0', 10);
+    const savedRoom = typeof window !== 'undefined' ? sessionStorage.getItem('pandu_room') : null;
+    const currentMyId = typeof window !== 'undefined' ? sessionStorage.getItem('pandu_player_id') : null;
+    if (!room && (!savedRoom || savedRoom !== roomId || !currentMyId)) {
+      const name = (typeof window !== 'undefined' && sessionStorage.getItem('pandu_name')) || `Player_${Math.floor(Math.random() * 900 + 100)}`;
+      const avatar = parseInt((typeof window !== 'undefined' && sessionStorage.getItem('pandu_avatar')) || '0', 10);
       emitJoinRoom(roomId, name, avatar);
     }
   }, [room, roomId]);
