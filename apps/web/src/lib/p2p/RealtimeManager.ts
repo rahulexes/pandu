@@ -413,7 +413,21 @@ export class RealtimeManager {
             }
 
             if (msg.type === 'server_event' && msg.event) {
-              const myId = this.myPlayerId || sessionStorage.getItem('pandu_player_id');
+              const myId = this.myPlayerId || (typeof window !== 'undefined' ? sessionStorage.getItem('pandu_player_id') : null);
+              
+              if (msg.event === 'lobby:kicked') {
+                if (msg.data?.targetPlayerId === myId) {
+                  if (typeof window !== 'undefined') {
+                    sessionStorage.setItem(`pandu_kicked_${cleanCode}`, (Date.now() + 60000).toString());
+                    sessionStorage.removeItem('pandu_room');
+                    sessionStorage.removeItem('pandu_player_id');
+                    sessionStorage.removeItem('pandu_is_host');
+                    window.location.href = `/?kicked=true&room=${cleanCode}`;
+                  }
+                  return;
+                }
+              }
+
               if (!msg.targetPlayerIds || (myId && msg.targetPlayerIds.includes(myId))) {
                 this.emitLocal(msg.event, msg.data);
               }
@@ -433,7 +447,7 @@ export class RealtimeManager {
   // ════════════════════════════════════════════════════════════
 
   emitAction(action: keyof ClientToServerEvents, data?: any): void {
-    const myId = this.myPlayerId || sessionStorage.getItem('pandu_player_id');
+    const myId = this.myPlayerId || (typeof window !== 'undefined' ? sessionStorage.getItem('pandu_player_id') : null);
     if (!myId) return;
 
     if (this.isHost && this.room) {
@@ -457,6 +471,9 @@ export class RealtimeManager {
     if (!this.room) return;
 
     switch (action) {
+      case 'lobby:kickPlayer':
+        this.room.kickPlayer(playerId, data?.targetPlayerId);
+        break;
       case 'lobby:setMode':
         this.room.setMode(playerId, data?.mode);
         this.room.broadcastRoomState();

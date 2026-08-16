@@ -28,6 +28,7 @@ export interface ClientToServerEvents {
   'lobby:toggleReady': () => void;
   'lobby:joinTeam': (data: { teamId: string }) => void;
   'lobby:startGame': () => void;
+  'lobby:kickPlayer': (data: { targetPlayerId: string }) => void;
 
   // ── Game Actions ──
   'game:drawCard': () => void;
@@ -70,6 +71,7 @@ export interface ServerToClientEvents {
   'lobby:settingsUpdated': (settings: GameSettings) => void;
   'lobby:playerReady': (data: { playerId: string; isReady: boolean }) => void;
   'lobby:teamUpdated': (data: { playerId: string; teamId: string }) => void;
+  'lobby:kicked': (data: { targetPlayerId: string; reason: string; cooldownSeconds: number; cooldownUntil: number }) => void;
 
   // ── Game State ──
   'game:stateUpdate': (state: ClientGameState) => void;

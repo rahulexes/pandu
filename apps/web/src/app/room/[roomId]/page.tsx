@@ -1,5 +1,5 @@
 // ============================================================
-// PANDU — Game Lobby Page (With Full Team Mode Selection)
+// PANDU — Game Lobby Page (Comprehensive Team System & Status)
 // ============================================================
 
 'use client';
@@ -86,13 +86,16 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
   const otherPlayers = room?.players.filter((p) => !p.isHost) || [];
   const readyCount = otherPlayers.filter((p) => p.isReady).length;
   const allReady = otherPlayers.length > 0 && otherPlayers.every((p) => p.isReady);
-  const canStart = isHost && (room?.players.length ?? 0) >= 2 && (allReady || otherPlayers.length === 0);
+
+  const currentMode = room?.settings.mode || GameMode.INDIVIDUAL;
+  const activeTeams = room?.teams.filter((t) => t.playerIds.length > 0) || [];
+  const teamModeValid = currentMode !== GameMode.TEAM || activeTeams.length >= 2;
+  const canStart = isHost && (room?.players.length ?? 0) >= 2 && (allReady || otherPlayers.length === 0) && teamModeValid;
 
   const cardsDealt = room?.settings.cardsDealt || 4;
   const initialViewable = room?.settings.initialViewable || 2;
   const queenCount = room?.settings.queenCount || 4;
   const maxInitialViewable = Math.floor(cardsDealt / 2);
-  const currentMode = room?.settings.mode || GameMode.INDIVIDUAL;
 
   const handleUpdateCardsDealt = (newVal: number) => {
     soundEngine.playCardFlip();
@@ -125,6 +128,19 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
   const handleJoinTeam = (teamId: string) => {
     soundEngine.playCardFlip();
     emitGameAction('lobby:joinTeam', { teamId });
+  };  const handleKickPlayer = (targetPlayerId: string, targetName: string) => {
+    soundEngine.playCardFlip();
+    if (window.confirm(`Kick ${targetName} from the room?\nThey will be on a 1-minute cooldown.`)) {
+      emitGameAction('lobby:kickPlayer', { targetPlayerId });
+    }
+  };
+
+  // Helper to find player's team
+  const getPlayerTeam = (playerId: string) => {
+    if (currentMode !== GameMode.TEAM || !room?.teams) return null;
+    const team = room.teams.find((t) => t.playerIds.includes(playerId));
+    if (!team) return null;
+    return TEAM_THEMES.find((th) => th.id === team.id);
   };
 
   return (
@@ -136,7 +152,7 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
       <div className="absolute inset-0 bg-radial from-[#151726]/60 via-[#0c0e17]/85 to-[#07080f] opacity-95 pointer-events-none z-0" />
       <div className="absolute top-10 left-1/2 -translate-x-1/2 w-[450px] h-[350px] rounded-full bg-[#a855f7]/12 blur-[140px] pointer-events-none z-0" />
 
-      <div className="relative z-10 flex flex-col flex-1 max-w-md mx-auto w-full pb-24 pointer-events-auto">
+      <div className="relative z-10 flex flex-col flex-1 max-w-md mx-auto w-full pb-28 pointer-events-auto">
         {/* ── Top Header ── */}
         <header className="flex items-center justify-between mb-4 pt-1">
           <button
@@ -375,8 +391,8 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
               <span className="text-xs font-black text-slate-200 uppercase tracking-wider">
                 Select Your Team
               </span>
-              <span className="text-[11px] text-purple-300">
-                Tap to join a team
+              <span className="text-[11px] text-purple-300 font-medium">
+                Tap to join
               </span>
             </div>
 
@@ -390,7 +406,7 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
                   <button
                     key={theme.id}
                     className={`p-3 rounded-xl text-left bg-gradient-to-br ${theme.bg} border ${
-                      isMyTeam ? theme.activeBorder + ' shadow-lg shadow-purple-500/20' : theme.border
+                      isMyTeam ? theme.activeBorder + ' shadow-lg shadow-purple-500/25 ring-2' : theme.border
                     } transition-all relative cursor-pointer hover:scale-[1.02] active:scale-[0.98]`}
                     onClick={() => handleJoinTeam(theme.id)}
                   >
@@ -403,11 +419,11 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
                       </span>
                     </div>
 
-                    <div className="flex items-center gap-1 min-h-[28px] flex-wrap">
+                    <div className="flex items-center gap-1.5 min-h-[28px] flex-wrap">
                       {teamData?.playerIds.map((pid) => {
                         const p = room?.players.find((x) => x.id === pid);
                         return p ? (
-                          <div key={pid} className="flex items-center gap-1 bg-black/40 px-1.5 py-0.5 rounded-full border border-white/10">
+                          <div key={pid} className="flex items-center gap-1 bg-black/50 px-1.5 py-0.5 rounded-full border border-white/10 shadow-sm">
                             <Avatar avatarId={p.avatarId} size={18} />
                             <span className="text-[10px] text-slate-200 font-bold truncate max-w-[60px]">{p.name}</span>
                           </div>
@@ -430,59 +446,89 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
             <h2 className="text-sm font-black text-slate-100 tracking-wide">
               Connected Players ({room?.players.length || 0})
             </h2>
+            <span className="text-[11px] text-slate-400">
+              Min 2 players to start
+            </span>
           </div>
 
           <div className="space-y-2.5">
             <AnimatePresence>
-              {room?.players.map((player, i) => (
-                <motion.div
-                  key={player.id}
-                  className="flex items-center gap-3 p-3.5 rounded-2xl bg-[#141724]/90 border border-purple-500/20 shadow-lg backdrop-blur-md"
-                  initial={{ opacity: 0, y: 5 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -5 }}
-                  transition={{ delay: i * 0.05 }}
-                >
-                  {/* Glowing Avatar */}
-                  <div className="w-11 h-11 rounded-full bg-gradient-to-tr from-purple-700 to-indigo-500 flex items-center justify-center p-0.5 shadow-md shadow-purple-500/30">
-                    <Avatar avatarId={player.avatarId} size={40} />
-                  </div>
+              {room?.players.map((player, i) => {
+                const playerTeam = getPlayerTeam(player.id);
 
-                  <div className="flex-1 min-w-0">
+                return (
+                  <motion.div
+                    key={player.id}
+                    className="flex items-center gap-3 p-3.5 rounded-2xl bg-[#141724]/90 border border-purple-500/20 shadow-lg backdrop-blur-md"
+                    initial={{ opacity: 0, y: 5 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -5 }}
+                    transition={{ delay: i * 0.05 }}
+                  >
+                    {/* Glowing Avatar */}
+                    <div className="w-11 h-11 rounded-full bg-gradient-to-tr from-purple-700 to-indigo-500 flex items-center justify-center p-0.5 shadow-md shadow-purple-500/30">
+                      <Avatar avatarId={player.avatarId} size={40} />
+                    </div>
+
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-sm truncate text-slate-100">
+                          {player.name}
+                        </span>
+                        {player.isHost && (
+                          <span className="text-amber-400 text-sm" title="Room Host">👑</span>
+                        )}
+                      </div>
+                      
+                      {/* Host Tag & Team Badge */}
+                      <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                        {player.isHost && (
+                          <span className="text-[10px] font-black uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded-full inline-block">
+                            Host
+                          </span>
+                        )}
+                        {playerTeam && (
+                          <span className={`text-[10px] font-black uppercase tracking-wider ${playerTeam.badge} ${playerTeam.text} px-2 py-0.5 rounded-full inline-block`}>
+                            {playerTeam.name}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Status Badge for ALL players (Host & Guests) */}
                     <div className="flex items-center gap-2">
-                      <span className="font-bold text-sm truncate text-slate-100">
-                        {player.name}
-                      </span>
-                      {player.isHost && (
-                        <span className="text-amber-400 text-sm">👑</span>
+                      {player.isHost ? (
+                        <div className="flex items-center gap-1.5 text-xs font-black text-amber-300 bg-amber-500/20 border border-amber-500/40 px-3 py-1 rounded-full shadow-md shadow-amber-500/10">
+                          <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+                          <span>👑 HOST (READY)</span>
+                        </div>
+                      ) : player.isReady ? (
+                        <div className="flex items-center gap-1.5 text-xs font-black text-emerald-400 bg-emerald-500/15 border border-emerald-500/40 px-3 py-1 rounded-full shadow-md shadow-emerald-500/20">
+                          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                          <span>✓ READY</span>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-1.5 text-xs font-bold text-amber-300/90 bg-amber-500/10 border border-amber-500/20 px-3 py-1 rounded-full">
+                          <span className="w-2 h-2 rounded-full bg-amber-400/70" />
+                          <span>⏳ NOT READY</span>
+                        </div>
+                      )}
+
+                      {/* Host Kick Action Button */}
+                      {isHost && !player.isHost && (
+                        <button
+                          className="p-1.5 px-2.5 rounded-xl bg-rose-500/15 hover:bg-rose-500/30 text-rose-300 hover:text-white border border-rose-500/30 text-[11px] font-black tracking-wider uppercase transition-all cursor-pointer flex items-center gap-1 active:scale-95 shadow-sm"
+                          onClick={() => handleKickPlayer(player.id, player.name)}
+                          title="Kick player (1-min cooldown)"
+                        >
+                          <span>🚫</span>
+                          <span>Kick</span>
+                        </button>
                       )}
                     </div>
-                    {player.isHost && (
-                      <span className="text-[10px] font-black uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded-full inline-block mt-0.5">
-                        Host
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Player Ready / Host Status Badge */}
-                  {player.isHost ? (
-                    <div className="flex items-center gap-1.5 text-xs font-bold text-amber-400 bg-amber-500/15 border border-amber-500/30 px-3 py-1 rounded-full shadow-sm">
-                      <span className="w-2 h-2 rounded-full bg-amber-400" />
-                      <span>👑 HOST</span>
-                    </div>
-                  ) : player.isReady ? (
-                    <div className="flex items-center gap-1.5 text-xs font-black text-emerald-400 bg-emerald-500/15 border border-emerald-500/40 px-3 py-1 rounded-full shadow-md shadow-emerald-500/20">
-                      <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                      <span>✓ READY</span>
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-1.5 text-xs font-bold text-amber-300/90 bg-amber-500/10 border border-amber-500/20 px-3 py-1 rounded-full">
-                      <span className="w-2 h-2 rounded-full bg-amber-400/70" />
-                      <span>⏳ NOT READY</span>
-                    </div>
-                  )}
-                </motion.div>
-              ))}
+                  </motion.div>
+                );
+              })}
             </AnimatePresence>
           </div>
         </div>
@@ -492,22 +538,47 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
       <footer className="fixed bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-[#0c0e17] via-[#0c0e17]/95 to-transparent z-30 pointer-events-auto">
         <div className="max-w-md mx-auto w-full">
           {isHost ? (
-            <button
-              className={`w-full py-4.5 rounded-full font-black text-sm sm:text-base tracking-wider uppercase transition-all duration-200 cursor-pointer shadow-2xl border-2 ${
-                canStart
-                  ? 'border-purple-400 bg-gradient-to-r from-[#7c3aed] to-[#c084fc] text-white hover:brightness-110 shadow-purple-500/40 animate-pulse'
-                  : 'border-purple-500/40 bg-gradient-to-r from-[#581c87]/80 to-[#7e22ce]/80 text-purple-200 shadow-purple-900/30'
-              }`}
-              onClick={() => {
-                if (canStart) {
-                  soundEngine.playCardFlip();
-                  emitGameAction('lobby:startGame');
-                }
-              }}
-              disabled={!canStart}
-            >
-              {canStart ? '🎴 START GAME' : (room?.players.length ?? 0) < 2 ? 'WAITING FOR PLAYERS (MIN 2)' : 'WAITING FOR READY'}
-            </button>
+            <div>
+              {/* Host Status Guidance */}
+              {otherPlayers.length > 0 && !allReady && (
+                <p className="text-center text-xs text-amber-300 mb-2 font-medium">
+                  ⏳ Waiting for other players to ready up ({readyCount}/{otherPlayers.length} ready)
+                </p>
+              )}
+              {otherPlayers.length === 0 && (
+                <p className="text-center text-xs text-slate-400 mb-2 font-medium">
+                  🔗 Share room code with friends to start (min 2 players)
+                </p>
+              )}
+              {currentMode === GameMode.TEAM && activeTeams.length < 2 && (
+                <p className="text-center text-xs text-rose-300 mb-2 font-medium">
+                  👥 Need at least 2 teams with players to start
+                </p>
+              )}
+
+              <button
+                className={`w-full py-4.5 rounded-full font-black text-sm sm:text-base tracking-wider uppercase transition-all duration-200 cursor-pointer shadow-2xl border-2 ${
+                  canStart
+                    ? 'border-purple-400 bg-gradient-to-r from-[#7c3aed] to-[#c084fc] text-white hover:brightness-110 shadow-purple-500/40 animate-pulse'
+                    : 'border-purple-500/40 bg-gradient-to-r from-[#581c87]/80 to-[#7e22ce]/80 text-purple-200 shadow-purple-900/30'
+                }`}
+                onClick={() => {
+                  if (canStart) {
+                    soundEngine.playCardFlip();
+                    emitGameAction('lobby:startGame');
+                  }
+                }}
+                disabled={!canStart}
+              >
+                {canStart
+                  ? '🎴 START GAME'
+                  : (room?.players.length ?? 0) < 2
+                  ? 'WAITING FOR PLAYERS (MIN 2)'
+                  : currentMode === GameMode.TEAM && activeTeams.length < 2
+                  ? 'NEED 2+ TEAMS WITH PLAYERS'
+                  : 'WAITING FOR READY'}
+              </button>
+            </div>
           ) : (
             <button
               className={`w-full py-4.5 rounded-full font-black text-sm sm:text-base tracking-wider uppercase transition-all duration-200 cursor-pointer shadow-2xl border-2 ${

@@ -9,7 +9,8 @@ import * as THREE from 'three';
 
 interface CardDef {
   rank: string;
-  suit: 'hearts' | 'diamonds' | 'clubs' | 'spades' | 'joker';
+  suit: string;
+  isBack?: boolean;
   basePos: [number, number, number];
   baseRot: [number, number, number]; // [x, y, z] in radians
   speed: number;
@@ -26,10 +27,11 @@ const CARD_DATA: CardDef[] = [
     speed: 1.1,
     phase: 0.0,
   },
-  // 2: Queen of Spades (Top-Center)
+  // 2: Ornate Blue Card Back (Top-Center Floating)
   {
-    rank: 'Q',
-    suit: 'spades',
+    rank: 'BACK',
+    suit: 'back',
+    isBack: true,
     basePos: [0.5, 2.35, -0.2],
     baseRot: [-0.12, -0.16, -0.45],
     speed: 0.95,
@@ -44,10 +46,11 @@ const CARD_DATA: CardDef[] = [
     speed: 1.05,
     phase: 2.8,
   },
-  // 4: Queen of Spades (Bottom-Right)
+  // 4: Ornate Blue Card Back (Bottom-Right Floating)
   {
-    rank: 'Q',
-    suit: 'spades',
+    rank: 'BACK',
+    suit: 'back',
+    isBack: true,
     basePos: [1.85, -1.35, 0.3],
     baseRot: [0.14, -0.18, -0.5],
     speed: 0.9,
@@ -218,12 +221,15 @@ export function ThreeHeroCards() {
     const cardGroup = new THREE.Group();
     scene.add(cardGroup);
 
+    const textureLoader = new THREE.TextureLoader();
+    const backTex = textureLoader.load('/cards/card_back.png');
+
     const cardMeshes: { mesh: THREE.Mesh; def: CardDef }[] = [];
 
     CARD_DATA.forEach((def) => {
-      const frontTex = createCardTexture(def.rank, def.suit);
+      const tex = def.isBack ? backTex : createCardTexture(def.rank, def.suit);
       const material = new THREE.MeshStandardMaterial({
-        map: frontTex,
+        map: tex,
         roughness: 0.3,
         metalness: 0.05,
         side: THREE.DoubleSide,

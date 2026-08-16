@@ -77,6 +77,19 @@ export default function HomePage() {
     setShowSettings(false);
   };
 
+  // Check for kicked notification on mount
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('kicked') === 'true') {
+        const kickedRoom = params.get('room');
+        setError(`You were kicked by the room host${kickedRoom ? ` for room ${kickedRoom}` : ''}. 1-minute cooldown active.`);
+        // Clean URL query
+        window.history.replaceState({}, '', '/');
+      }
+    }
+  }, []);
+
   const handleCreateRoom = useCallback(async () => {
     soundEngine.playCardFlip();
     setLoading(true);
@@ -96,16 +109,29 @@ export default function HomePage() {
   }, [name, avatarId, router]);
 
   const handleJoinRoom = useCallback(async () => {
-    if (!roomCode.trim()) {
+    const cleanCode = roomCode.trim().toUpperCase();
+    if (!cleanCode) {
       setError('Please enter a 6-character room code');
       return;
     }
+
+    // Check client-side cooldown timestamp
+    const kickedUntilStr = typeof window !== 'undefined' ? sessionStorage.getItem(`pandu_kicked_${cleanCode}`) : null;
+    if (kickedUntilStr) {
+      const kickedUntil = parseInt(kickedUntilStr, 10);
+      if (Date.now() < kickedUntil) {
+        const remainingSec = Math.ceil((kickedUntil - Date.now()) / 1000);
+        setError(`You were kicked from room ${cleanCode}. Cooldown active (${remainingSec}s remaining).`);
+        return;
+      }
+    }
+
     soundEngine.playCardFlip();
     setLoading(true);
     setError('');
 
     try {
-      const result = await emitJoinRoom(roomCode.trim().toUpperCase(), name, avatarId);
+      const result = await emitJoinRoom(cleanCode, name, avatarId);
       if (result.success && result.roomCode) {
         router.push(`/room/${result.roomCode}`);
       } else {

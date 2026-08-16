@@ -111,6 +111,7 @@ export class Room {
   emitEvent: RoomEventHandler;
 
   private sessionTokens: Map<string, string> = new Map();
+  private bannedPlayers: Map<string, number> = new Map();
 
   constructor(code: string, emitEvent: RoomEventHandler) {
     this.id = generateId();
@@ -124,6 +125,13 @@ export class Room {
   addPlayer(name: string, avatarId: number, socketId: string): { player: Player; sessionToken: string } | { error: string } {
     if (this.stateMachine.currentPhase !== GamePhase.LOBBY && this.stateMachine.currentPhase !== GamePhase.GAME_OVER) {
       return { error: 'Cannot join — game is in progress' };
+    }
+
+    // Check 1-minute kick cooldown
+    const bannedUntil = this.bannedPlayers.get(name.trim().toLowerCase());
+    if (bannedUntil && Date.now() < bannedUntil) {
+      const remainingSec = Math.ceil((bannedUntil - Date.now()) / 1000);
+      return { error: `You were kicked from this room. Cooldown active (${remainingSec}s remaining).` };
     }
 
     const playerId = generateId();
@@ -146,6 +154,31 @@ export class Room {
 
     this.logger.log(GameEventType.PLAYER_JOINED, { playerId, name });
     return { player, sessionToken };
+  }
+
+  kickPlayer(hostId: string, targetPlayerId: string): { error?: string } {
+    const isHost = hostId === this.hostId || (this.players.get(hostId)?.isHost ?? false) || this.players.size <= 1;
+    if (!isHost) return { error: 'Only the host can kick players' };
+    if (targetPlayerId === this.hostId) return { error: 'Host cannot kick themselves' };
+
+    const targetPlayer = this.players.get(targetPlayerId);
+    if (!targetPlayer) return { error: 'Player not found' };
+
+    const cooldownUntil = Date.now() + 60_000;
+    this.bannedPlayers.set(targetPlayerId, cooldownUntil);
+    this.bannedPlayers.set(targetPlayer.name.trim().toLowerCase(), cooldownUntil);
+
+    this.emitEvent('lobby:kicked', {
+      targetPlayerId,
+      reason: 'Kicked by host',
+      cooldownSeconds: 60,
+      cooldownUntil,
+    }, [targetPlayerId]);
+
+    this.removePlayer(targetPlayerId);
+    this.logger.log(GameEventType.PLAYER_LEFT, { playerId: targetPlayerId, reason: 'kicked' });
+    this.broadcastRoomState();
+    return {};
   }
 
   reconnectPlayer(sessionToken: string, socketId: string): Player | null {

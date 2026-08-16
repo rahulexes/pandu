@@ -211,41 +211,23 @@ function CardFront({ rank, suit, dims }: { rank: Rank; suit: Suit; dims: typeof 
 function CardBack({ dims }: { dims: typeof SIZE_MAP.md }) {
   return (
     <div
-      className="w-full h-full relative overflow-hidden flex items-center justify-center select-none"
+      className="w-full h-full relative overflow-hidden flex items-center justify-center select-none bg-[#111318]"
       style={{
-        background: 'linear-gradient(145deg, #ffffff 0%, #f8fafc 50%, #f1f5f9 100%)',
         borderRadius: dims.radius,
-        border: '1.5px solid rgba(168, 85, 247, 0.45)',
-        boxShadow: 'inset 0 0 10px rgba(0, 0, 0, 0.05), 0 2px 8px rgba(0, 0, 0, 0.25)',
+        boxShadow: 'inset 0 0 8px rgba(0, 0, 0, 0.7), 0 3px 10px rgba(0, 0, 0, 0.4)',
+        border: '1px solid rgba(255, 255, 255, 0.12)',
       }}
     >
-      {/* Outer Geometric Gold/Purple Filigree Border */}
-      <div className="absolute inset-1 rounded-sm border border-purple-400/30 flex items-center justify-center pointer-events-none">
-        {/* Subtle Diamond Lattice Background */}
-        <div
-          className="absolute inset-0 opacity-15 pointer-events-none"
-          style={{
-            backgroundImage: `radial-gradient(circle at 50% 50%, rgba(147, 51, 234, 0.6) 1px, transparent 1px)`,
-            backgroundSize: '8px 8px',
-          }}
-        />
-
-        {/* Inner Card Emblem Chip */}
-        <div className="w-[84%] h-[84%] rounded-sm border border-amber-400/40 flex flex-col items-center justify-center relative bg-gradient-to-b from-white/95 to-slate-50/95 shadow-inner">
-          {/* Pandu Golden Crown Emblem */}
-          <span
-            className="select-none filter drop-shadow-[0_2px_4px_rgba(251,191,36,0.5)] font-bold text-center leading-none"
-            style={{ fontSize: dims.fontSize * 1.35 }}
-          >
-            👑
-          </span>
-
-          {/* Custom PANDU Logo */}
-          <span className="text-[8px] sm:text-[9px] font-black tracking-[0.22em] uppercase text-transparent bg-clip-text bg-gradient-to-r from-amber-600 via-purple-600 to-pink-600 font-display mt-0.5">
-            PANDU
-          </span>
-        </div>
-      </div>
+      {/* Ornate Luxury Blue Filigree Card Back Design */}
+      <img
+        src="/cards/card_back.png"
+        alt="Card Back"
+        className="w-full h-full object-cover select-none pointer-events-none"
+        style={{
+          borderRadius: dims.radius,
+        }}
+        draggable={false}
+      />
     </div>
   );
 }
@@ -272,27 +254,34 @@ export function DeckStack({
       whileHover={{ scale: 1.06 }}
       whileTap={{ scale: 0.95 }}
     >
-      {/* Stacked white aesthetic card backs */}
+      {/* Stacked ornate luxury card backs */}
       {Array.from({ length: stackCards }).map((_, i) => (
         <div
           key={i}
-          className="absolute"
+          className="absolute overflow-hidden"
           style={{
             width: 72,
             height: 104,
             top: -i * 2,
             left: i * 0.5,
-            background: 'linear-gradient(145deg, #ffffff, #f1f5f9)',
             borderRadius: 8,
-            border: '1.5px solid rgba(168, 85, 247, 0.4)',
-            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
+            border: '1px solid rgba(255, 255, 255, 0.15)',
+            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.45)',
+            background: '#111318',
           }}
-        />
+        >
+          <img
+            src="/cards/card_back.png"
+            alt="Deck Card"
+            className="w-full h-full object-cover select-none pointer-events-none"
+            draggable={false}
+          />
+        </div>
       ))}
 
       {/* Count badge */}
       <div
-        className="absolute -top-2 -right-2 bg-amber-500 text-black text-xs font-black rounded-full flex items-center justify-center shadow-lg"
+        className="absolute -top-2 -right-2 bg-gradient-to-r from-amber-500 to-amber-400 text-black text-xs font-black rounded-full flex items-center justify-center shadow-lg border border-amber-300"
         style={{ width: 24, height: 24, zIndex: 10 }}
       >
         {count}
@@ -300,7 +289,7 @@ export function DeckStack({
 
       {/* Label */}
       <div
-        className="absolute -bottom-6 left-1/2 -translate-x-1/2 text-xs text-slate-300 font-bold whitespace-nowrap"
+        className="absolute -bottom-6 left-1/2 -translate-x-1/2 text-xs text-slate-300 font-bold whitespace-nowrap drop-shadow"
       >
         {label}
       </div>
