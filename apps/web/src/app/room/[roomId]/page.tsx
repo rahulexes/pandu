@@ -4,7 +4,7 @@
 
 'use client';
 
-import { useEffect, useState, use } from 'react';
+import { useEffect, useState, useRef, use } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useRouter } from 'next/navigation';
 import { useSocket, emitGameAction, emitJoinRoom } from '@/hooks/useSocket';
@@ -51,13 +51,17 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
   }, [phase, roomId, router]);
 
   // Auto-join if directly navigated via URL link (e.g. pasted invite link)
+  const hasAutoJoinedRef = useRef(false);
   useEffect(() => {
     const savedRoom = typeof window !== 'undefined' ? sessionStorage.getItem('pandu_room') : null;
     const currentMyId = typeof window !== 'undefined' ? sessionStorage.getItem('pandu_player_id') : null;
     if (!room && (!savedRoom || savedRoom !== roomId || !currentMyId)) {
-      const name = (typeof window !== 'undefined' && sessionStorage.getItem('pandu_name')) || `Player_${Math.floor(Math.random() * 900 + 100)}`;
-      const avatar = parseInt((typeof window !== 'undefined' && sessionStorage.getItem('pandu_avatar')) || '0', 10);
-      emitJoinRoom(roomId, name, avatar);
+      if (!hasAutoJoinedRef.current) {
+        hasAutoJoinedRef.current = true;
+        const name = (typeof window !== 'undefined' && sessionStorage.getItem('pandu_name')) || `Player_${Math.floor(Math.random() * 900 + 100)}`;
+        const avatar = parseInt((typeof window !== 'undefined' && sessionStorage.getItem('pandu_avatar')) || '0', 10);
+        emitJoinRoom(roomId, name, avatar);
+      }
     }
   }, [room, roomId]);
 

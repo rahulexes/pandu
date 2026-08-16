@@ -106,6 +106,20 @@ export class RealtimeManager {
     });
   }
 
+  private guestClientMap: Map<string, { playerId: string; sessionToken: string }> = new Map();
+
+  private getClientId(): string {
+    if (typeof window !== 'undefined') {
+      let cid = sessionStorage.getItem('pandu_client_id');
+      if (!cid) {
+        cid = 'pandu_' + Math.random().toString(36).substring(2, 9);
+        sessionStorage.setItem('pandu_client_id', cid);
+      }
+      return cid;
+    }
+    return this.clientId;
+  }
+
   // ════════════════════════════════════════════════════════════
   // HOST ROOM CREATION
   // ════════════════════════════════════════════════════════════
@@ -113,6 +127,7 @@ export class RealtimeManager {
   async createRoom(playerName: string, avatarId: number): Promise<RoomResponse> {
     try {
       this.cleanupClient();
+      this.guestClientMap.clear();
 
       const codeChars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
       let code = '';
@@ -147,12 +162,13 @@ export class RealtimeManager {
 
           const { player, sessionToken } = result;
           this.myPlayerId = player.id;
+          this.guestClientMap.set(this.getClientId(), { playerId: player.id, sessionToken });
 
           // Message router for Host
           client.on('message', (t, msgBuffer) => {
             try {
               const msg = JSON.parse(msgBuffer.toString());
-              if (msg.senderClientId === this.clientId) return; // Ignore own messages
+              if (msg.senderClientId === this.getClientId()) return; // Ignore own messages
 
               if (msg.type === 'guest_join_request') {
                 this.handleGuestJoinOnHost(msg);
@@ -186,37 +202,71 @@ export class RealtimeManager {
     let player: any = null;
     let token = sessionToken;
 
+    // Check if guestClientId has already joined
+    if (guestClientId && this.guestClientMap.has(guestClientId)) {
+      const cached = this.guestClientMap.get(guestClientId)!;
+      this.client.publish(
+        `pandu/rooms/${this.currentRoomCode}/events`,
+        JSON.stringify({
+          senderClientId: this.getClientId(),
+          type: 'join_response',
+          targetGuestId: guestClientId,
+          targetPlayerName: playerName,
+          success: true,
+          roomCode: this.room.code,
+          sessionToken: cached.sessionToken,
+          playerId: cached.playerId,
+        }),
+        { qos: 1 }
+      );
+      this.room.broadcastRoomState();
+      return;
+    }
+
     if (sessionToken) {
       player = this.room.reconnectPlayer(sessionToken, guestClientId);
     }
 
+    // Check if a player with this same name is already present
     if (!player) {
-      const result = this.room.addPlayer(playerName, avatarId, guestClientId);
-      if ('error' in result) {
-        this.client.publish(
-          `pandu/rooms/${this.currentRoomCode}/events`,
-          JSON.stringify({
-            senderClientId: this.clientId,
-            type: 'join_response',
-            targetGuestId: guestClientId,
-            success: false,
-            error: result.error,
-          }),
-          { qos: 1 }
-        );
-        return;
+      const existing = this.room.getClientRoomState().players.find(p => p.name.trim().toLowerCase() === (playerName || '').trim().toLowerCase());
+      if (existing) {
+        player = existing;
+        token = sessionToken || `token_${existing.id}`;
+      } else {
+        const result = this.room.addPlayer(playerName, avatarId, guestClientId);
+        if ('error' in result) {
+          this.client.publish(
+            `pandu/rooms/${this.currentRoomCode}/events`,
+            JSON.stringify({
+              senderClientId: this.getClientId(),
+              type: 'join_response',
+              targetGuestId: guestClientId,
+              targetPlayerName: playerName,
+              success: false,
+              error: result.error,
+            }),
+            { qos: 1 }
+          );
+          return;
+        }
+        player = result.player;
+        token = result.sessionToken;
       }
-      player = result.player;
-      token = result.sessionToken;
+    }
+
+    if (guestClientId) {
+      this.guestClientMap.set(guestClientId, { playerId: player.id, sessionToken: token });
     }
 
     // Send successful response to guest
     this.client.publish(
       `pandu/rooms/${this.currentRoomCode}/events`,
       JSON.stringify({
-        senderClientId: this.clientId,
+        senderClientId: this.getClientId(),
         type: 'join_response',
         targetGuestId: guestClientId,
+        targetPlayerName: playerName,
         success: true,
         roomCode: this.room.code,
         sessionToken: token,
@@ -322,9 +372,9 @@ export class RealtimeManager {
               client.publish(
                 `pandu/rooms/${cleanCode}/events`,
                 JSON.stringify({
-                  senderClientId: this.clientId,
+                  senderClientId: this.getClientId(),
                   type: 'guest_join_request',
-                  guestClientId: this.clientId,
+                  guestClientId: this.getClientId(),
                   roomCode: cleanCode,
                   playerName,
                   avatarId,
@@ -343,9 +393,13 @@ export class RealtimeManager {
         client.on('message', (t, msgBuffer) => {
           try {
             const msg = JSON.parse(msgBuffer.toString());
-            if (msg.senderClientId === this.clientId) return; // Ignore own messages
+            if (msg.senderClientId === this.getClientId()) return; // Ignore own messages
 
-            if (msg.type === 'join_response' && msg.targetGuestId === this.clientId) {
+            const isForMe =
+              (msg.targetGuestId && msg.targetGuestId === this.getClientId()) ||
+              (msg.targetPlayerName && msg.targetPlayerName.trim().toLowerCase() === playerName.trim().toLowerCase());
+
+            if (msg.type === 'join_response' && isForMe) {
               if (!resolved) {
                 resolved = true;
                 clearTimeout(timeout);
