@@ -188,103 +188,131 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
           </div>
         </div>
 
-        {/* ── Game Mode Section ── */}
-        <div className="mt-4 mb-4">
-          <h2 className="text-sm font-black text-slate-100 tracking-wide mb-2.5">
-            Game Mode
-          </h2>
-
-          <div className="grid grid-cols-2 gap-3">
-            {/* Individual Mode Card */}
-            <button
-              className={`p-4 rounded-2xl text-center transition-all relative overflow-hidden cursor-pointer ${
-                currentMode === GameMode.INDIVIDUAL
-                  ? 'border-2 border-[#eab308] bg-[#221c17]/95 text-[#fbbf24] shadow-[0_0_25px_rgba(234,179,8,0.25)]'
-                  : 'border border-white/10 bg-[#141724]/85 text-slate-400 hover:text-slate-200 hover:bg-[#181c2b]'
-              }`}
-              onClick={() => handleSetMode(GameMode.INDIVIDUAL)}
-            >
-              <span className="font-black text-base tracking-wide block">
-                Individual
-              </span>
-            </button>
-
-            {/* Team Mode Card */}
-            <button
-              className={`p-4 rounded-2xl text-center transition-all relative overflow-hidden cursor-pointer ${
-                currentMode === GameMode.TEAM
-                  ? 'border-2 border-[#a855f7] bg-[#1c162b]/95 text-[#c084fc] shadow-[0_0_25px_rgba(168,85,247,0.25)]'
-                  : 'border border-white/10 bg-[#141724]/85 text-slate-400 hover:text-slate-200 hover:bg-[#181c2b]'
-              }`}
-              onClick={() => handleSetMode(GameMode.TEAM)}
-            >
-              <span className="font-black text-base tracking-wide block">
-                Team Mode
-              </span>
-            </button>
-          </div>
-        </div>
-
-        {/* ── Rule Customization Section (Fully Interactive) ── */}
-        <div className="mb-4">
-          <h2 className="text-sm font-black text-slate-100 tracking-wide mb-2.5">
-            Rule Customization
-          </h2>
-
-          <div className="grid grid-cols-2 gap-3">
-            {/* Cards Dealt (Y) */}
-            <div className="bg-[#141724]/90 border border-white/10 p-3.5 rounded-2xl text-center backdrop-blur-md">
-              <p className="text-xs font-bold text-slate-300 mb-2">
-                Cards Dealt <span className="text-amber-400 font-bold">(Y)</span>
-              </p>
-              <div className="flex items-center justify-center gap-2.5 bg-[#0e101a] py-1.5 px-3 rounded-xl border border-white/10 mx-auto">
-                <button
-                  className="w-9 h-9 rounded-lg bg-white/10 hover:bg-white/20 active:scale-90 flex items-center justify-center text-xl font-bold text-slate-200 hover:text-amber-300 transition-all cursor-pointer"
-                  onClick={() => handleUpdateCardsDealt(cardsDealt - 1)}
-                  aria-label="Decrease cards dealt"
-                >
-                  −
-                </button>
-                <span className="text-xl font-bold font-mono w-6 text-center text-amber-300">
-                  {cardsDealt}
+        {/* ── Game Mode & Rule Customization (Host Only) ── */}
+        {isHost ? (
+          <div className="space-y-4 mb-4">
+            {/* Game Mode Section */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <h2 className="text-sm font-black text-slate-100 tracking-wide">
+                  Game Mode
+                </h2>
+                <span className="text-[10px] font-bold text-amber-400 bg-amber-400/10 px-2 py-0.5 rounded-full border border-amber-400/20">
+                  Host Setting
                 </span>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                {/* Individual Mode Card */}
                 <button
-                  className="w-9 h-9 rounded-lg bg-white/10 hover:bg-white/20 active:scale-90 flex items-center justify-center text-xl font-bold text-slate-200 hover:text-amber-300 transition-all cursor-pointer"
-                  onClick={() => handleUpdateCardsDealt(cardsDealt + 1)}
-                  aria-label="Increase cards dealt"
+                  className={`p-4 rounded-2xl text-center transition-all relative overflow-hidden cursor-pointer ${
+                    currentMode === GameMode.INDIVIDUAL
+                      ? 'border-2 border-[#eab308] bg-[#221c17]/95 text-[#fbbf24] shadow-[0_0_25px_rgba(234,179,8,0.25)]'
+                      : 'border border-white/10 bg-[#141724]/85 text-slate-400 hover:text-slate-200 hover:bg-[#181c2b]'
+                  }`}
+                  onClick={() => handleSetMode(GameMode.INDIVIDUAL)}
                 >
-                  +
+                  <span className="font-black text-base tracking-wide block">
+                    Individual
+                  </span>
+                </button>
+
+                {/* Team Mode Card */}
+                <button
+                  className={`p-4 rounded-2xl text-center transition-all relative overflow-hidden cursor-pointer ${
+                    currentMode === GameMode.TEAM
+                      ? 'border-2 border-[#a855f7] bg-[#1c162b]/95 text-[#c084fc] shadow-[0_0_25px_rgba(168,85,247,0.25)]'
+                      : 'border border-white/10 bg-[#141724]/85 text-slate-400 hover:text-slate-200 hover:bg-[#181c2b]'
+                  }`}
+                  onClick={() => handleSetMode(GameMode.TEAM)}
+                >
+                  <span className="font-black text-base tracking-wide block">
+                    Team Mode
+                  </span>
                 </button>
               </div>
             </div>
 
-            {/* Initial Viewable (X) */}
-            <div className="bg-[#141724]/90 border border-white/10 p-3.5 rounded-2xl text-center backdrop-blur-md">
-              <p className="text-xs font-bold text-slate-300 mb-2">
-                Initial Viewable <span className="text-amber-400 font-bold">(X)</span>
-              </p>
-              <div className="flex items-center justify-center gap-2.5 bg-[#0e101a] py-1.5 px-3 rounded-xl border border-white/10 mx-auto">
-                <button
-                  className="w-9 h-9 rounded-lg bg-white/10 hover:bg-white/20 active:scale-90 flex items-center justify-center text-xl font-bold text-slate-200 hover:text-amber-300 transition-all cursor-pointer"
-                  onClick={() => handleUpdateInitialViewable(initialViewable - 1)}
-                  aria-label="Decrease initial viewable"
-                >
-                  −
-                </button>
-                <span className="text-xl font-bold font-mono w-6 text-center text-amber-300">
-                  {initialViewable}
-                </span>
-                <button
-                  className="w-9 h-9 rounded-lg bg-white/10 hover:bg-white/20 active:scale-90 flex items-center justify-center text-xl font-bold text-slate-200 hover:text-amber-300 transition-all cursor-pointer"
-                  onClick={() => handleUpdateInitialViewable(initialViewable + 1)}
-                  aria-label="Increase initial viewable"
-                >
-                  +
-                </button>
+            {/* Rule Customization Section */}
+            <div>
+              <h2 className="text-sm font-black text-slate-100 tracking-wide mb-2">
+                Rule Customization
+              </h2>
+
+              <div className="grid grid-cols-2 gap-3">
+                {/* Cards Dealt (Y) */}
+                <div className="bg-[#141724]/90 border border-white/10 p-3.5 rounded-2xl text-center backdrop-blur-md">
+                  <p className="text-xs font-bold text-slate-300 mb-2">
+                    Cards Dealt <span className="text-amber-400 font-bold">(Y)</span>
+                  </p>
+                  <div className="flex items-center justify-center gap-2.5 bg-[#0e101a] py-1.5 px-3 rounded-xl border border-white/10 mx-auto">
+                    <button
+                      className="w-9 h-9 rounded-lg bg-white/10 hover:bg-white/20 active:scale-90 flex items-center justify-center text-xl font-bold text-slate-200 hover:text-amber-300 transition-all cursor-pointer"
+                      onClick={() => handleUpdateCardsDealt(cardsDealt - 1)}
+                      aria-label="Decrease cards dealt"
+                    >
+                      −
+                    </button>
+                    <span className="text-xl font-bold font-mono w-6 text-center text-amber-300">
+                      {cardsDealt}
+                    </span>
+                    <button
+                      className="w-9 h-9 rounded-lg bg-white/10 hover:bg-white/20 active:scale-90 flex items-center justify-center text-xl font-bold text-slate-200 hover:text-amber-300 transition-all cursor-pointer"
+                      onClick={() => handleUpdateCardsDealt(cardsDealt + 1)}
+                      aria-label="Increase cards dealt"
+                    >
+                      +
+                    </button>
+                  </div>
+                </div>
+
+                {/* Initial Viewable (X) */}
+                <div className="bg-[#141724]/90 border border-white/10 p-3.5 rounded-2xl text-center backdrop-blur-md">
+                  <p className="text-xs font-bold text-slate-300 mb-2">
+                    Initial Viewable <span className="text-amber-400 font-bold">(X)</span>
+                  </p>
+                  <div className="flex items-center justify-center gap-2.5 bg-[#0e101a] py-1.5 px-3 rounded-xl border border-white/10 mx-auto">
+                    <button
+                      className="w-9 h-9 rounded-lg bg-white/10 hover:bg-white/20 active:scale-90 flex items-center justify-center text-xl font-bold text-slate-200 hover:text-amber-300 transition-all cursor-pointer"
+                      onClick={() => handleUpdateInitialViewable(initialViewable - 1)}
+                      aria-label="Decrease initial viewable"
+                    >
+                      −
+                    </button>
+                    <span className="text-xl font-bold font-mono w-6 text-center text-amber-300">
+                      {initialViewable}
+                    </span>
+                    <button
+                      className="w-9 h-9 rounded-lg bg-white/10 hover:bg-white/20 active:scale-90 flex items-center justify-center text-xl font-bold text-slate-200 hover:text-amber-300 transition-all cursor-pointer"
+                      onClick={() => handleUpdateInitialViewable(initialViewable + 1)}
+                      aria-label="Increase initial viewable"
+                    >
+                      +
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
-        </div>
+        ) : (
+          /* Guest Read-Only Summary Banner */
+          <div className="bg-[#141724]/90 border border-purple-500/20 p-3.5 rounded-2xl mb-4 backdrop-blur-md flex items-center justify-between text-xs">
+            <div className="flex items-center gap-2">
+              <span className="text-base">🎮</span>
+              <div>
+                <p className="font-bold text-slate-200">
+                  {currentMode === GameMode.TEAM ? '👥 Team Mode' : '👤 Individual Mode'}
+                </p>
+                <p className="text-[11px] text-slate-400 mt-0.5">
+                  {cardsDealt} Cards per hand • {initialViewable} Initial peeks
+                </p>
+              </div>
+            </div>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-purple-300 bg-purple-500/20 border border-purple-500/30 px-2.5 py-1 rounded-full">
+              Configured by Host
+            </span>
+          </div>
+        )}
 
         {/* ── Connected Players Section ── */}
         <div className="mb-4">
