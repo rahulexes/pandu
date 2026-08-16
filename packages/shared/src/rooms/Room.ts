@@ -216,7 +216,8 @@ export class Room {
   }
 
   setMode(hostId: string, mode: GameMode): { error?: string } {
-    if (hostId !== this.hostId) return { error: 'Only the host can change mode' };
+    const isHost = hostId === this.hostId || (this.players.get(hostId)?.isHost ?? false) || this.players.size <= 1;
+    if (!isHost) return { error: 'Only the host can change mode' };
     if (this.stateMachine.currentPhase !== GamePhase.LOBBY) return { error: 'Can only change mode in lobby' };
 
     this.settings.mode = mode;
@@ -237,11 +238,14 @@ export class Room {
       this.teams.clear();
     }
 
+    this.emitEvent('lobby:settingsUpdated', this.settings);
+    this.broadcastRoomState();
     return {};
   }
 
   updateSettings(hostId: string, updates: Partial<GameSettings>): { error?: string } {
-    if (hostId !== this.hostId) return { error: 'Only the host can change settings' };
+    const isHost = hostId === this.hostId || (this.players.get(hostId)?.isHost ?? false) || this.players.size <= 1;
+    if (!isHost) return { error: 'Only the host can change settings' };
     if (this.stateMachine.currentPhase !== GamePhase.LOBBY) return { error: 'Can only change settings in lobby' };
 
     if (updates.cardsDealt !== undefined) {
@@ -267,6 +271,8 @@ export class Room {
       this.settings.queenCount = updates.queenCount;
     }
 
+    this.emitEvent('lobby:settingsUpdated', this.settings);
+    this.broadcastRoomState();
     return {};
   }
 

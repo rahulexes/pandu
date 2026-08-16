@@ -20,7 +20,7 @@ interface RoomState {
   addPlayer: (player: Player) => void;
   removePlayer: (playerId: string, newHostId?: string) => void;
   updatePlayerReady: (playerId: string, isReady: boolean) => void;
-  updateSettings: (settings: GameSettings) => void;
+  updateSettings: (settings: Partial<GameSettings>) => void;
 
   // Local user
   myPlayerId: string | null;
@@ -82,7 +82,10 @@ export const useRoomStore = create<RoomState>((set, get) => ({
   updateSettings: (settings) => set((state) => {
     if (!state.room) return {};
     return {
-      room: { ...state.room, settings },
+      room: {
+        ...state.room,
+        settings: { ...state.room.settings, ...settings },
+      },
     };
   }),
 

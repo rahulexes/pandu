@@ -245,6 +245,7 @@ export async function emitCreateRoom(playerName: string, avatarId: number): Prom
   if (response.sessionToken) {
     sessionStorage.setItem('pandu_session', response.sessionToken);
     sessionStorage.setItem('pandu_room', response.roomCode || '');
+    sessionStorage.setItem('pandu_is_host', 'true');
     if (response.playerId) {
       sessionStorage.setItem('pandu_player_id', response.playerId);
       useRoomStore.getState().setMyPlayerId(response.playerId);
@@ -259,6 +260,7 @@ export async function emitJoinRoom(roomCode: string, playerName: string, avatarI
   if (response.sessionToken) {
     sessionStorage.setItem('pandu_session', response.sessionToken);
     sessionStorage.setItem('pandu_room', response.roomCode || '');
+    sessionStorage.setItem('pandu_is_host', 'false');
     if (response.playerId) {
       sessionStorage.setItem('pandu_player_id', response.playerId);
       useRoomStore.getState().setMyPlayerId(response.playerId);

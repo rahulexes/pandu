@@ -1,5 +1,5 @@
 // ============================================================
-// PANDU — Game Lobby Page (Matching Reference Aesthetic)
+// PANDU — Game Lobby Page (3D Three.js Background & Fix Rules Stepper)
 // ============================================================
 
 'use client';
@@ -10,10 +10,11 @@ import { useRouter } from 'next/navigation';
 import { useSocket, emitGameAction, emitJoinRoom } from '@/hooks/useSocket';
 import { useRoomStore } from '@/stores/roomStore';
 import { useGameStore } from '@/stores/gameStore';
-import { Avatar, AvatarPicker } from '@/components/lobby/AvatarPicker';
+import { Avatar } from '@/components/lobby/AvatarPicker';
 import { GameMode, GamePhase } from '@pandu/shared';
 import { soundEngine } from '@/lib/audio';
 import { LobbyQRModal } from '@/components/lobby/LobbyQRModal';
+import { ThreeHeroCards } from '@/components/home/ThreeHeroCards';
 
 export default function RoomPage({ params }: { params: Promise<{ roomId: string }> }) {
   const { roomId } = use(params);
@@ -23,6 +24,7 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
   const isConnected = useRoomStore((s) => s.isConnected);
   const myPlayerId = useRoomStore((s) => s.myPlayerId);
   const myName = useRoomStore((s) => s.myName);
+  const updateSettingsLocal = useRoomStore((s) => s.updateSettings);
   const phase = useGameStore((s) => s.phase);
 
   const [copied, setCopied] = useState(false);
@@ -59,40 +61,67 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
     setTimeout(() => setCopied(false), 2000);
   };
 
-  // Robust check for Host identification
-  const hostPlayer = room?.players.find(p => p.isHost);
-  const isHost = hostPlayer ? (hostPlayer.id === myPlayerId || hostPlayer.name === myName) : false;
-  
-  const me = room?.players.find(p => p.id === myPlayerId || p.name === myName);
+  // Resilient Host Check
+  const savedIsHost = typeof window !== 'undefined' && sessionStorage.getItem('pandu_is_host') === 'true';
+  const savedPlayerId = typeof window !== 'undefined' ? sessionStorage.getItem('pandu_player_id') : null;
+  const hostPlayer = room?.players.find((p) => p.isHost) || (room?.players && room.players[0]);
+  const isHost =
+    savedIsHost ||
+    (hostPlayer
+      ? hostPlayer.id === myPlayerId ||
+        hostPlayer.id === savedPlayerId ||
+        hostPlayer.name === myName
+      : true);
+
+  const me = room?.players.find((p) => p.id === myPlayerId || p.name === myName);
   const isMyReady = me?.isReady ?? false;
 
-  const otherPlayers = room?.players.filter(p => !p.isHost) || [];
-  const readyCount = otherPlayers.filter(p => p.isReady).length;
-  const allReady = otherPlayers.length > 0 && otherPlayers.every(p => p.isReady);
+  const otherPlayers = room?.players.filter((p) => !p.isHost) || [];
+  const readyCount = otherPlayers.filter((p) => p.isReady).length;
+  const allReady = otherPlayers.length > 0 && otherPlayers.every((p) => p.isReady);
   const canStart = isHost && (room?.players.length ?? 0) >= 2 && (allReady || otherPlayers.length === 0);
 
-  const maxInitialViewable = Math.floor((room?.settings.cardsDealt || 4) / 2);
+  const cardsDealt = room?.settings.cardsDealt || 4;
+  const initialViewable = room?.settings.initialViewable || 2;
+  const maxInitialViewable = Math.floor(cardsDealt / 2);
   const currentMode = room?.settings.mode || GameMode.INDIVIDUAL;
+
+  const handleUpdateCardsDealt = (newVal: number) => {
+    soundEngine.playCardFlip();
+    const clamped = Math.max(2, Math.min(10, newVal));
+    const newMaxView = Math.floor(clamped / 2);
+    const adjustedView = Math.min(initialViewable, newMaxView);
+    updateSettingsLocal({ cardsDealt: clamped, initialViewable: adjustedView });
+    emitGameAction('lobby:updateSettings', { cardsDealt: clamped, initialViewable: adjustedView });
+  };
+
+  const handleUpdateInitialViewable = (newVal: number) => {
+    soundEngine.playCardFlip();
+    const clamped = Math.max(1, Math.min(maxInitialViewable, newVal));
+    updateSettingsLocal({ initialViewable: clamped });
+    emitGameAction('lobby:updateSettings', { initialViewable: clamped });
+  };
+
+  const handleSetMode = (mode: GameMode) => {
+    soundEngine.playCardFlip();
+    updateSettingsLocal({ mode });
+    emitGameAction('lobby:setMode', { mode });
+  };
 
   return (
     <div className="min-h-dvh flex flex-col justify-between p-4 sm:p-6 relative overflow-hidden bg-[#0c0e17] text-slate-100 select-none">
+      {/* Three.js Fullscreen 3D Floating Cards in Lobby Background */}
+      <ThreeHeroCards />
+
       {/* Ambient background glows */}
-      <div className="absolute inset-0 bg-radial from-[#151726]/60 via-[#0c0e17] to-[#07080f] opacity-95 pointer-events-none" />
-      <div className="absolute top-10 left-1/2 -translate-x-1/2 w-[450px] h-[350px] rounded-full bg-[#a855f7]/12 blur-[140px] pointer-events-none" />
+      <div className="absolute inset-0 bg-radial from-[#151726]/60 via-[#0c0e17]/85 to-[#07080f] opacity-95 pointer-events-none z-0" />
+      <div className="absolute top-10 left-1/2 -translate-x-1/2 w-[450px] h-[350px] rounded-full bg-[#a855f7]/12 blur-[140px] pointer-events-none z-0" />
 
-      {/* Decorative background cards (from reference image) */}
-      <div className="absolute top-20 left-2 w-20 h-28 rounded-xl bg-gradient-to-br from-[#1a1429] to-[#0d0a17] border border-[#a855f7]/30 shadow-2xl rotate-[-28deg] opacity-60 pointer-events-none flex items-center justify-center">
-        <span className="text-3xl text-purple-400/50">♠</span>
-      </div>
-      <div className="absolute top-16 right-3 w-20 h-28 rounded-xl bg-gradient-to-br from-[#261f18] to-[#120d09] border border-[#eab308]/30 shadow-2xl rotate-[25deg] opacity-60 pointer-events-none flex items-center justify-center">
-        <span className="text-3xl text-amber-400/50">♣</span>
-      </div>
-
-      <div className="relative z-10 flex flex-col flex-1 max-w-md mx-auto w-full pb-24">
+      <div className="relative z-10 flex flex-col flex-1 max-w-md mx-auto w-full pb-24 pointer-events-auto">
         {/* ── Top Header ── */}
         <header className="flex items-center justify-between mb-4 pt-1">
           <button
-            className="text-sm text-slate-200 hover:text-white font-bold flex items-center gap-1.5 cursor-pointer transition-all"
+            className="text-sm text-slate-200 hover:text-white font-bold flex items-center gap-1.5 cursor-pointer transition-all bg-[#141724]/80 hover:bg-[#1f2438] px-3.5 py-1.5 rounded-full border border-white/10"
             onClick={() => {
               soundEngine.playCardFlip();
               emitGameAction('room:leave');
@@ -101,13 +130,13 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
           >
             <span className="text-base">❮</span> Leave
           </button>
-          
+
           <h1 className="font-display text-2xl tracking-wider font-black bg-gradient-to-r from-[#fbbf24] via-[#f3e8ff] to-[#c084fc] bg-clip-text text-transparent drop-shadow-[0_2px_12px_rgba(192,132,252,0.4)]">
             PANDU
           </h1>
 
           <button
-            className="p-2 rounded-full text-slate-300 hover:text-white transition-all cursor-pointer text-lg"
+            className="p-2 rounded-full bg-[#141724]/80 hover:bg-[#1f2438] border border-white/10 text-slate-300 hover:text-white transition-all cursor-pointer text-lg"
             onClick={() => {
               soundEngine.playCardFlip();
               setShowSettings(true);
@@ -146,7 +175,7 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
             </button>
 
             <button
-              className="p-2.5 px-3.5 rounded-full font-bold text-xs tracking-wider uppercase transition-all duration-200 flex items-center gap-1.5 cursor-pointer shadow-lg bg-[#181c2b]/90 hover:bg-[#20263a] text-slate-200 border border-white/10 hover:border-purple-400/40"
+              className="p-2.5 px-4 rounded-full font-bold text-xs tracking-wider uppercase transition-all duration-200 flex items-center gap-1.5 cursor-pointer shadow-lg bg-[#181c2b]/90 hover:bg-[#20263a] text-slate-200 border border-white/10 hover:border-purple-400/40"
               onClick={() => {
                 soundEngine.playCardFlip();
                 setShowQR(true);
@@ -170,16 +199,10 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
             <button
               className={`p-4 rounded-2xl text-center transition-all relative overflow-hidden cursor-pointer ${
                 currentMode === GameMode.INDIVIDUAL
-                  ? 'border-2 border-[#eab308] bg-[#221c17]/90 text-[#fbbf24] shadow-[0_0_25px_rgba(234,179,8,0.25)]'
-                  : 'border border-white/10 bg-[#141724]/70 text-slate-400 hover:text-slate-200 hover:bg-[#181c2b]'
+                  ? 'border-2 border-[#eab308] bg-[#221c17]/95 text-[#fbbf24] shadow-[0_0_25px_rgba(234,179,8,0.25)]'
+                  : 'border border-white/10 bg-[#141724]/85 text-slate-400 hover:text-slate-200 hover:bg-[#181c2b]'
               }`}
-              onClick={() => {
-                if (isHost) {
-                  soundEngine.playCardFlip();
-                  emitGameAction('lobby:setMode', { mode: 'INDIVIDUAL' });
-                }
-              }}
-              disabled={!isHost}
+              onClick={() => handleSetMode(GameMode.INDIVIDUAL)}
             >
               <span className="font-black text-base tracking-wide block">
                 Individual
@@ -190,16 +213,10 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
             <button
               className={`p-4 rounded-2xl text-center transition-all relative overflow-hidden cursor-pointer ${
                 currentMode === GameMode.TEAM
-                  ? 'border-2 border-[#a855f7] bg-[#1c162b]/90 text-[#c084fc] shadow-[0_0_25px_rgba(168,85,247,0.25)]'
-                  : 'border border-white/10 bg-[#141724]/70 text-slate-400 hover:text-slate-200 hover:bg-[#181c2b]'
+                  ? 'border-2 border-[#a855f7] bg-[#1c162b]/95 text-[#c084fc] shadow-[0_0_25px_rgba(168,85,247,0.25)]'
+                  : 'border border-white/10 bg-[#141724]/85 text-slate-400 hover:text-slate-200 hover:bg-[#181c2b]'
               }`}
-              onClick={() => {
-                if (isHost) {
-                  soundEngine.playCardFlip();
-                  emitGameAction('lobby:setMode', { mode: 'TEAM' });
-                }
-              }}
-              disabled={!isHost}
+              onClick={() => handleSetMode(GameMode.TEAM)}
             >
               <span className="font-black text-base tracking-wide block">
                 Team Mode
@@ -208,7 +225,7 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
           </div>
         </div>
 
-        {/* ── Rule Customization Section ── */}
+        {/* ── Rule Customization Section (Fully Interactive) ── */}
         <div className="mb-4">
           <h2 className="text-sm font-black text-slate-100 tracking-wide mb-2.5">
             Rule Customization
@@ -216,35 +233,25 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
 
           <div className="grid grid-cols-2 gap-3">
             {/* Cards Dealt (Y) */}
-            <div className="bg-[#141724]/80 border border-white/10 p-3.5 rounded-2xl text-center">
+            <div className="bg-[#141724]/90 border border-white/10 p-3.5 rounded-2xl text-center backdrop-blur-md">
               <p className="text-xs font-bold text-slate-300 mb-2">
                 Cards Dealt <span className="text-amber-400 font-bold">(Y)</span>
               </p>
-              <div className="flex items-center justify-center gap-2.5 bg-[#0e101a] py-1.5 px-3 rounded-xl border border-white/5 mx-auto">
+              <div className="flex items-center justify-center gap-2.5 bg-[#0e101a] py-1.5 px-3 rounded-xl border border-white/10 mx-auto">
                 <button
-                  className="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/15 active:scale-95 flex items-center justify-center text-lg font-bold text-slate-300 transition-all cursor-pointer disabled:opacity-30"
-                  onClick={() => {
-                    if (isHost) {
-                      soundEngine.playCardFlip();
-                      emitGameAction('lobby:updateSettings', { cardsDealt: Math.max(2, (room?.settings.cardsDealt || 4) - 1) });
-                    }
-                  }}
-                  disabled={!isHost}
+                  className="w-9 h-9 rounded-lg bg-white/10 hover:bg-white/20 active:scale-90 flex items-center justify-center text-xl font-bold text-slate-200 hover:text-amber-300 transition-all cursor-pointer"
+                  onClick={() => handleUpdateCardsDealt(cardsDealt - 1)}
+                  aria-label="Decrease cards dealt"
                 >
                   −
                 </button>
-                <span className="text-xl font-bold font-mono w-6 text-center text-slate-100">
-                  {room?.settings.cardsDealt || 4}
+                <span className="text-xl font-bold font-mono w-6 text-center text-amber-300">
+                  {cardsDealt}
                 </span>
                 <button
-                  className="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/15 active:scale-95 flex items-center justify-center text-lg font-bold text-amber-300 transition-all cursor-pointer disabled:opacity-30"
-                  onClick={() => {
-                    if (isHost) {
-                      soundEngine.playCardFlip();
-                      emitGameAction('lobby:updateSettings', { cardsDealt: Math.min(10, (room?.settings.cardsDealt || 4) + 1) });
-                    }
-                  }}
-                  disabled={!isHost}
+                  className="w-9 h-9 rounded-lg bg-white/10 hover:bg-white/20 active:scale-90 flex items-center justify-center text-xl font-bold text-slate-200 hover:text-amber-300 transition-all cursor-pointer"
+                  onClick={() => handleUpdateCardsDealt(cardsDealt + 1)}
+                  aria-label="Increase cards dealt"
                 >
                   +
                 </button>
@@ -252,35 +259,25 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
             </div>
 
             {/* Initial Viewable (X) */}
-            <div className="bg-[#141724]/80 border border-white/10 p-3.5 rounded-2xl text-center">
+            <div className="bg-[#141724]/90 border border-white/10 p-3.5 rounded-2xl text-center backdrop-blur-md">
               <p className="text-xs font-bold text-slate-300 mb-2">
                 Initial Viewable <span className="text-amber-400 font-bold">(X)</span>
               </p>
-              <div className="flex items-center justify-center gap-2.5 bg-[#0e101a] py-1.5 px-3 rounded-xl border border-white/5 mx-auto">
+              <div className="flex items-center justify-center gap-2.5 bg-[#0e101a] py-1.5 px-3 rounded-xl border border-white/10 mx-auto">
                 <button
-                  className="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/15 active:scale-95 flex items-center justify-center text-lg font-bold text-slate-300 transition-all cursor-pointer disabled:opacity-30"
-                  onClick={() => {
-                    if (isHost) {
-                      soundEngine.playCardFlip();
-                      emitGameAction('lobby:updateSettings', { initialViewable: Math.max(1, (room?.settings.initialViewable || 2) - 1) });
-                    }
-                  }}
-                  disabled={!isHost}
+                  className="w-9 h-9 rounded-lg bg-white/10 hover:bg-white/20 active:scale-90 flex items-center justify-center text-xl font-bold text-slate-200 hover:text-amber-300 transition-all cursor-pointer"
+                  onClick={() => handleUpdateInitialViewable(initialViewable - 1)}
+                  aria-label="Decrease initial viewable"
                 >
                   −
                 </button>
-                <span className="text-xl font-bold font-mono w-6 text-center text-slate-100">
-                  {room?.settings.initialViewable || 2}
+                <span className="text-xl font-bold font-mono w-6 text-center text-amber-300">
+                  {initialViewable}
                 </span>
                 <button
-                  className="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/15 active:scale-95 flex items-center justify-center text-lg font-bold text-amber-300 transition-all cursor-pointer disabled:opacity-30"
-                  onClick={() => {
-                    if (isHost) {
-                      soundEngine.playCardFlip();
-                      emitGameAction('lobby:updateSettings', { initialViewable: Math.min(maxInitialViewable, (room?.settings.initialViewable || 2) + 1) });
-                    }
-                  }}
-                  disabled={!isHost}
+                  className="w-9 h-9 rounded-lg bg-white/10 hover:bg-white/20 active:scale-90 flex items-center justify-center text-xl font-bold text-slate-200 hover:text-amber-300 transition-all cursor-pointer"
+                  onClick={() => handleUpdateInitialViewable(initialViewable + 1)}
+                  aria-label="Increase initial viewable"
                 >
                   +
                 </button>
@@ -302,7 +299,7 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
               {room?.players.map((player, i) => (
                 <motion.div
                   key={player.id}
-                  className="flex items-center gap-3 p-3.5 rounded-2xl bg-[#141724]/90 border border-purple-500/20 shadow-lg"
+                  className="flex items-center gap-3 p-3.5 rounded-2xl bg-[#141724]/90 border border-purple-500/20 shadow-lg backdrop-blur-md"
                   initial={{ opacity: 0, y: 5 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -5 }}
@@ -341,11 +338,11 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
       </div>
 
       {/* ── Fixed Bottom Action Button ── */}
-      <footer className="fixed bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-[#0c0e17] via-[#0c0e17]/95 to-transparent z-30">
+      <footer className="fixed bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-[#0c0e17] via-[#0c0e17]/95 to-transparent z-30 pointer-events-auto">
         <div className="max-w-md mx-auto w-full">
           {isHost ? (
             <button
-              className={`w-full py-4 rounded-full font-black text-sm sm:text-base tracking-wider uppercase transition-all duration-200 cursor-pointer shadow-2xl border-2 ${
+              className={`w-full py-4.5 rounded-full font-black text-sm sm:text-base tracking-wider uppercase transition-all duration-200 cursor-pointer shadow-2xl border-2 ${
                 canStart
                   ? 'border-purple-400 bg-gradient-to-r from-[#7c3aed] to-[#c084fc] text-white hover:brightness-110 shadow-purple-500/40 animate-pulse'
                   : 'border-purple-500/40 bg-gradient-to-r from-[#581c87]/80 to-[#7e22ce]/80 text-purple-200 shadow-purple-900/30'
@@ -362,7 +359,7 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
             </button>
           ) : (
             <button
-              className={`w-full py-4 rounded-full font-black text-sm sm:text-base tracking-wider uppercase transition-all duration-200 cursor-pointer shadow-2xl border-2 ${
+              className={`w-full py-4.5 rounded-full font-black text-sm sm:text-base tracking-wider uppercase transition-all duration-200 cursor-pointer shadow-2xl border-2 ${
                 isMyReady
                   ? 'border-emerald-400 bg-emerald-500 text-slate-950 shadow-emerald-500/40'
                   : 'border-purple-400 bg-gradient-to-r from-[#7c3aed] to-[#c084fc] text-white shadow-purple-500/40'
