@@ -1,5 +1,5 @@
 // ============================================================
-// PANDU — Home Page (Permanent Profile & Settings Modal)
+// PANDU — Home Page (3D Floating Three.js Cards & QR Settings)
 // ============================================================
 
 'use client';
@@ -11,6 +11,8 @@ import { useSocket, emitCreateRoom, emitJoinRoom } from '@/hooks/useSocket';
 import { useRoomStore } from '@/stores/roomStore';
 import { Avatar, AvatarPicker } from '@/components/lobby/AvatarPicker';
 import { soundEngine } from '@/lib/audio';
+import { ThreeHeroCards } from '@/components/home/ThreeHeroCards';
+import { QRCodeShare } from '@/components/home/QRCodeShare';
 
 const COOL_NAMES = [
   'ShadowAce', 'MysticFox', 'LuckyFalcon', 'ThunderWolf',
@@ -33,6 +35,7 @@ export default function HomePage() {
   const [name, setName] = useState('');
   const [avatarId, setAvatarId] = useState(0);
   const [showSettings, setShowSettings] = useState(false);
+  const [settingsTab, setSettingsTab] = useState<'profile' | 'qr'>('profile');
   const [mode, setMode] = useState<'home' | 'join'>('home');
   const [roomCode, setRoomCode] = useState('');
   const [error, setError] = useState('');
@@ -115,131 +118,144 @@ export default function HomePage() {
   }, [roomCode, name, avatarId, router]);
 
   return (
-    <div className="min-h-dvh flex flex-col items-center justify-center p-6 relative overflow-hidden bg-[#131314] text-[#e3e3e3]">
-      {/* Google Gemini Signature Aurora Background Glows */}
-      <div className="absolute inset-0 bg-radial from-[#1e1f2b]/40 via-[#131314] to-[#0e0e10] opacity-95 pointer-events-none" />
-      <div className="absolute -top-40 -left-40 w-[500px] h-[500px] rounded-full bg-[#4285f4]/15 blur-[140px] pointer-events-none" />
-      <div className="absolute top-1/3 -right-40 w-[500px] h-[500px] rounded-full bg-[#9b72cb]/15 blur-[140px] pointer-events-none" />
-      <div className="absolute -bottom-40 left-1/3 w-[500px] h-[500px] rounded-full bg-[#d96570]/12 blur-[140px] pointer-events-none" />
+    <div className="min-h-dvh flex flex-col justify-between p-4 sm:p-6 relative overflow-hidden bg-[#0c101b] text-slate-100 select-none">
+      {/* Ambient background glows */}
+      <div className="absolute inset-0 bg-radial from-[#151c2e]/60 via-[#0c101b] to-[#070a12] opacity-95 pointer-events-none" />
+      <div className="absolute -top-40 -left-40 w-[450px] h-[450px] rounded-full bg-[#38bdf8]/10 blur-[140px] pointer-events-none" />
+      <div className="absolute top-1/2 -right-40 w-[450px] h-[450px] rounded-full bg-[#c084fc]/10 blur-[140px] pointer-events-none" />
+      <div className="absolute -bottom-40 left-1/3 w-[450px] h-[450px] rounded-full bg-[#f472b6]/10 blur-[140px] pointer-events-none" />
 
-      {/* ── Top Permanent Profile Bar ── */}
-      <div className="absolute top-6 left-6 right-6 flex items-center justify-between z-20 max-w-md mx-auto">
-        <div className="flex items-center gap-3 bg-[#1e1f20] hover:bg-[#282a2c] px-4 py-2 rounded-full border border-white/10 shadow-lg transition-all">
-          <Avatar avatarId={avatarId} size={34} />
+      {/* ── Top Bar (Device Profile & Settings) ── */}
+      <header className="relative z-20 flex items-center justify-between w-full max-w-md mx-auto pt-2">
+        {/* Left Profile Chip */}
+        <div className="flex items-center gap-3 bg-[#182033]/80 hover:bg-[#202b44] backdrop-blur-xl pl-2 pr-5 py-2 rounded-full border border-white/10 shadow-lg shadow-black/40 transition-all">
+          <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-purple-600 to-pink-500 flex items-center justify-center p-0.5 shadow-md shadow-pink-500/20">
+            <Avatar avatarId={avatarId} size={36} />
+          </div>
           <div className="text-left">
-            <p className="text-xs font-bold text-[#e3e3e3] truncate max-w-[120px]">{name || 'Player'}</p>
-            <p className="text-[10px] text-[#9b72cb] font-bold uppercase tracking-wider">Device Profile</p>
+            <p className="text-sm font-bold text-slate-100 truncate max-w-[130px] leading-tight">
+              {name || 'Player'}
+            </p>
+            <p className="text-[10px] text-[#c084fc] font-bold uppercase tracking-widest leading-none mt-0.5">
+              Device Profile
+            </p>
           </div>
         </div>
 
+        {/* Right Settings Button */}
         <button
-          className="p-2.5 rounded-full bg-[#1e1f20] hover:bg-[#282a2c] text-[#c4c7c5] hover:text-white border border-white/10 shadow-lg transition-all cursor-pointer flex items-center gap-1.5 text-xs font-bold"
+          className="px-4 py-2.5 rounded-full bg-[#182033]/80 hover:bg-[#202b44] text-slate-200 hover:text-white border border-white/10 shadow-lg shadow-black/40 transition-all cursor-pointer flex items-center gap-1.5 text-xs font-bold"
           onClick={() => {
             soundEngine.playCardFlip();
+            setSettingsTab('profile');
             setShowSettings(true);
           }}
         >
           <span>⚙️</span> Settings
         </button>
-      </div>
+      </header>
 
-      {/* Main Container */}
-      <motion.div
-        className="relative z-10 w-full max-w-md mt-16"
-        initial={{ opacity: 0, y: 30 }}
-        animate={{ opacity: 1, y: 0 }}
-      >
-        {/* Gemini Sparkling Logo */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center gap-2">
-            <span className="text-3xl bg-gradient-to-r from-[#4285f4] via-[#9b72cb] to-[#d96570] bg-clip-text text-transparent animate-pulse select-none">
-              ✦
-            </span>
-            <h1 className="font-display text-6xl sm:text-7xl tracking-wide bg-gradient-to-r from-[#4285f4] via-[#9b72cb] to-[#d96570] bg-clip-text text-transparent drop-shadow-[0_4px_30px_rgba(155,114,203,0.4)]">
-              PANDU
-            </h1>
-            <span className="text-3xl bg-gradient-to-r from-[#9b72cb] via-[#d96570] to-[#fbbc04] bg-clip-text text-transparent animate-pulse select-none">
-              ✦
-            </span>
+      {/* ── Central Hero Section with 3D Floating Three.js Cards ── */}
+      <main className="relative z-10 flex-1 flex flex-col items-center justify-center max-w-md mx-auto w-full my-auto">
+        <div className="relative w-full flex items-center justify-center">
+          {/* 3D Three.js Interactive Floating Cards Scene */}
+          <ThreeHeroCards />
+
+          {/* Central Overlay Logo (Crown + PANDU + Subtitle) */}
+          <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none z-20">
+            {/* Jewel Crown Icon */}
+            <motion.div
+              className="text-4xl sm:text-5xl mb-1 filter drop-shadow-[0_4px_12px_rgba(251,191,36,0.5)] select-none"
+              animate={{ y: [0, -4, 0] }}
+              transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
+            >
+              👑
+            </motion.div>
+
+            {/* PANDU Gradient Title with Sparkles */}
+            <div className="flex items-center justify-center gap-2">
+              <span className="text-xl sm:text-2xl text-[#38bdf8] animate-pulse">✦</span>
+              <h1 className="font-display text-5xl sm:text-6xl font-black tracking-wider bg-gradient-to-r from-[#38bdf8] via-[#c084fc] to-[#f472b6] bg-clip-text text-transparent drop-shadow-[0_4px_30px_rgba(192,132,252,0.5)]">
+                PANDU
+              </h1>
+              <span className="text-xl sm:text-2xl text-[#f472b6] animate-pulse">✦</span>
+            </div>
+
+            {/* Subtext */}
+            <p className="text-slate-400 text-[10px] sm:text-xs mt-1.5 font-black tracking-[0.28em] uppercase text-center">
+              Multiplayer Card Game
+            </p>
           </div>
-          <p className="text-[#8e918f] text-xs mt-2 font-bold tracking-[0.25em] uppercase">
-            Multiplayer Card Game
-          </p>
         </div>
+      </main>
 
-        {/* Server Connection Status */}
-        <div className="flex items-center justify-center gap-2 mb-6 bg-[#1e1f20] border border-white/10 py-1.5 px-4 rounded-full w-fit mx-auto shadow-sm">
-          <div className="w-2 h-2 rounded-full bg-[#1aa260] animate-pulse shadow-[0_0_8px_rgba(26,162,96,0.8)]" />
-          <span className="text-[11px] font-semibold text-[#c4c7c5] tracking-wide">
-            Realtime Cloud Multiplayer Active
-          </span>
-        </div>
-
-        {/* Home Action Cards */}
+      {/* ── Bottom Interactive Action Buttons ── */}
+      <footer className="relative z-20 w-full max-w-md mx-auto pb-4">
         <AnimatePresence mode="wait">
           {mode === 'home' && (
             <motion.div
-              key="home"
+              key="home-actions"
               initial={{ opacity: 0, y: 15 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -15 }}
               className="space-y-3.5"
             >
+              {/* Primary Gradient Pill: CREATE PRIVATE ROOM */}
               <button
-                className="btn-primary w-full py-4 text-base font-bold tracking-wide cursor-pointer shadow-xl rounded-full"
+                className="w-full py-4 px-6 rounded-full font-black text-sm sm:text-base tracking-wider text-white bg-gradient-to-r from-[#0ea5e9] via-[#a855f7] to-[#f43f5e] shadow-xl shadow-purple-500/25 hover:shadow-purple-500/40 hover:brightness-110 active:scale-[0.98] transition-all cursor-pointer flex items-center justify-center gap-2"
                 onClick={handleCreateRoom}
                 disabled={loading}
               >
-                {loading ? 'Creating Gemini Room...' : '✨ CREATE PRIVATE ROOM'}
+                <span>✨</span>
+                <span>{loading ? 'CREATING ROOM...' : 'CREATE PRIVATE ROOM'}</span>
               </button>
 
+              {/* Secondary Translucent Pill: JOIN WITH CODE */}
               <button
-                className="btn-secondary w-full py-4 text-base font-bold tracking-wide cursor-pointer rounded-full"
+                className="w-full py-4 px-6 rounded-full font-bold text-sm sm:text-base tracking-wider text-slate-200 bg-[#182033]/80 hover:bg-[#202b44] border border-white/15 hover:border-white/25 shadow-lg shadow-black/40 active:scale-[0.98] transition-all cursor-pointer flex items-center justify-center gap-2"
                 onClick={() => {
                   soundEngine.playCardFlip();
                   setMode('join');
                 }}
               >
-                🔗 JOIN WITH CODE
+                <span>🔗</span>
+                <span>JOIN WITH CODE</span>
               </button>
             </motion.div>
           )}
 
           {mode === 'join' && (
             <motion.div
-              key="join"
+              key="join-actions"
               initial={{ opacity: 0, y: 15 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -15 }}
-              className="space-y-4"
+              className="space-y-3"
             >
               <button
-                className="text-xs text-[#c4c7c5] hover:text-white flex items-center gap-1 mb-2 cursor-pointer font-semibold"
+                className="text-xs text-slate-400 hover:text-white flex items-center gap-1.5 mb-1 cursor-pointer font-bold transition-all"
                 onClick={() => {
                   soundEngine.playCardFlip();
                   setMode('home');
                   setError('');
                 }}
               >
-                ← Back to Home
+                <span>←</span> Back to Main Menu
               </button>
 
-              <div className="glass rounded-3xl p-6 border border-white/10 space-y-4">
-                <h2 className="font-display text-lg text-center text-[#e3e3e3]">
-                  Enter Room Code
+              <div className="glass-strong rounded-3xl p-5 border border-purple-500/30 shadow-2xl space-y-4">
+                <h2 className="font-display text-base text-center text-slate-100">
+                  Enter 6-Letter Room Code
                 </h2>
 
                 <div>
-                  <label className="text-[11px] font-bold text-[#8e918f] uppercase tracking-wider mb-1.5 block">
-                    6-Letter Room Code
-                  </label>
                   <input
                     type="text"
                     value={roomCode}
                     onChange={(e) => setRoomCode(e.target.value.toUpperCase())}
                     placeholder="e.g. QK5ZPG"
                     maxLength={6}
-                    className="w-full bg-[#131314] border border-white/15 rounded-2xl px-4 py-3.5 text-white placeholder:text-[#8e918f] focus:outline-none focus:border-[#9b72cb] text-center tracking-[0.3em] text-2xl font-mono font-bold uppercase transition-all"
+                    className="w-full bg-[#0c101b] border border-white/15 rounded-2xl px-4 py-3.5 text-white placeholder:text-slate-600 focus:outline-none focus:border-[#c084fc] text-center tracking-[0.3em] text-2xl font-mono font-black uppercase transition-all shadow-inner"
                   />
                 </div>
 
@@ -250,19 +266,20 @@ export default function HomePage() {
                 )}
 
                 <button
-                  className="btn-primary w-full py-3.5 text-base font-bold tracking-wide cursor-pointer rounded-full"
+                  className="w-full py-3.5 px-6 rounded-full font-black text-sm tracking-wider text-white bg-gradient-to-r from-[#0ea5e9] to-[#f43f5e] shadow-lg shadow-purple-500/30 hover:brightness-110 active:scale-[0.98] transition-all cursor-pointer flex items-center justify-center gap-2"
                   onClick={handleJoinRoom}
                   disabled={loading}
                 >
-                  {loading ? 'Joining Room...' : '🚀 JOIN ROOM'}
+                  <span>🚀</span>
+                  <span>{loading ? 'JOINING ROOM...' : 'JOIN ROOM'}</span>
                 </button>
               </div>
             </motion.div>
           )}
         </AnimatePresence>
-      </motion.div>
+      </footer>
 
-      {/* ── Settings / Profile Modal ── */}
+      {/* ── Settings & QR Code Modal ── */}
       <AnimatePresence>
         {showSettings && (
           <motion.div
@@ -272,53 +289,96 @@ export default function HomePage() {
             exit={{ opacity: 0 }}
           >
             <motion.div
-              className="glass-strong rounded-3xl p-6 max-w-sm w-full border border-amber-500/30 shadow-2xl space-y-5"
+              className="glass-strong rounded-3xl p-6 max-w-sm w-full border border-purple-500/30 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto"
               initial={{ scale: 0.9, y: 20 }}
               animate={{ scale: 1, y: 0 }}
               exit={{ scale: 0.9, y: 20 }}
             >
+              {/* Modal Header */}
               <div className="flex items-center justify-between border-b border-white/10 pb-3">
-                <h3 className="font-display text-lg text-amber-300">Player Profile Settings</h3>
+                <div className="flex gap-2">
+                  <button
+                    className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
+                      settingsTab === 'profile'
+                        ? 'bg-gradient-to-r from-[#0ea5e9] to-[#c084fc] text-white shadow-md'
+                        : 'bg-white/5 text-slate-400 hover:text-white'
+                    }`}
+                    onClick={() => {
+                      soundEngine.playCardFlip();
+                      setSettingsTab('profile');
+                    }}
+                  >
+                    👤 Profile
+                  </button>
+                  <button
+                    className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
+                      settingsTab === 'qr'
+                        ? 'bg-gradient-to-r from-[#c084fc] to-[#f472b6] text-white shadow-md'
+                        : 'bg-white/5 text-slate-400 hover:text-white'
+                    }`}
+                    onClick={() => {
+                      soundEngine.playCardFlip();
+                      setSettingsTab('qr');
+                    }}
+                  >
+                    📱 Share QR Code
+                  </button>
+                </div>
+
                 <button
-                  className="text-slate-400 hover:text-white text-lg p-1"
+                  className="text-slate-400 hover:text-white text-lg p-1 cursor-pointer"
                   onClick={() => setShowSettings(false)}
                 >
                   ✕
                 </button>
               </div>
 
-              {/* Avatar Picker */}
-              <div>
-                <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2 block text-center">
-                  Choose Avatar
-                </label>
-                <div className="flex justify-center mb-3">
-                  <Avatar avatarId={avatarId} size={64} />
+              {/* Tab 1: Profile Settings */}
+              {settingsTab === 'profile' && (
+                <div className="space-y-4">
+                  {/* Avatar Picker */}
+                  <div>
+                    <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2 block text-center">
+                      Choose Avatar
+                    </label>
+                    <div className="flex justify-center mb-3">
+                      <div className="w-16 h-16 rounded-full bg-gradient-to-tr from-purple-600 to-pink-500 flex items-center justify-center p-1 shadow-lg shadow-pink-500/20">
+                        <Avatar avatarId={avatarId} size={58} />
+                      </div>
+                    </div>
+                    <AvatarPicker selectedId={avatarId} onSelect={setAvatarId} />
+                  </div>
+
+                  {/* Name Input */}
+                  <div>
+                    <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 block">
+                      Device Display Name
+                    </label>
+                    <input
+                      type="text"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      placeholder="Enter your name"
+                      maxLength={18}
+                      className="w-full bg-[#0c101b] border border-white/15 rounded-2xl px-4 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:border-[#c084fc] font-bold text-sm transition-all"
+                    />
+                  </div>
+
+                  <button
+                    className="w-full py-3.5 px-6 rounded-full font-black text-sm tracking-wider text-white bg-gradient-to-r from-[#0ea5e9] via-[#a855f7] to-[#f43f5e] shadow-lg shadow-purple-500/30 hover:brightness-110 transition-all cursor-pointer"
+                    onClick={() => handleSaveSettings(name, avatarId)}
+                  >
+                    💾 SAVE PROFILE
+                  </button>
                 </div>
-                <AvatarPicker selectedId={avatarId} onSelect={setAvatarId} />
-              </div>
+              )}
 
-              {/* Name Input */}
-              <div>
-                <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 block">
-                  Device Display Name
-                </label>
-                <input
-                  type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="Enter your name"
-                  maxLength={18}
-                  className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:border-amber-400 font-bold text-sm transition-all"
-                />
-              </div>
-
-              <button
-                className="btn-primary w-full py-3 text-sm font-black tracking-wider cursor-pointer"
-                onClick={() => handleSaveSettings(name, avatarId)}
-              >
-                💾 SAVE PERMANENT PROFILE
-              </button>
+              {/* Tab 2: Website QR Code Share */}
+              {settingsTab === 'qr' && (
+                <div>
+                  <QRCodeShare />
+                </div>
+              )}
             </motion.div>
           </motion.div>
         )}
@@ -326,3 +386,4 @@ export default function HomePage() {
     </div>
   );
 }
+
