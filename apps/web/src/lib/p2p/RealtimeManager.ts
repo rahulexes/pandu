@@ -1,11 +1,11 @@
 // ============================================================
-// PANDU — Realtime Cloud Broadcast Manager (Supabase Realtime)
+// PANDU — Realtime Cloud Broadcast Manager (WSS Cloud Mesh)
 // ============================================================
 // 100% Serverless, Vercel-hosted Realtime Multiplayer.
 // Works seamlessly across 100% of Mobile Networks (4G/5G, Jio, Airtel),
-// Firewalls, iPhones, Android, and PCs without NAT/STUN/TURN limitations.
+// iPhones, Android, PCs, Brave, Safari, and Wi-Fi without NAT/STUN issues.
 
-import { createClient, RealtimeChannel } from '@supabase/supabase-js';
+import mqtt from 'mqtt';
 import { Room } from '@pandu/shared';
 import type {
   ClientToServerEvents,
@@ -15,34 +15,23 @@ import type {
 
 type EventListener = (...args: any[]) => void;
 
-// Public Realtime Cloud Endpoint for PANDU (Edge WebSockets)
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://dsqxovgupckhryuqhyqq.supabase.co';
-const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzcXhvdmd1cGNraHJ5dXFoeXFxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Mzk3Mzg0MDAsImV4cCI6MjA1NTMxNDQwMH0.w1V_3xYp-R2D2K-e8U5f9Y_1kX7P2vL0nN4mS8qT6vA';
+const CLOUD_BROKERS = [
+  'wss://broker.emqx.io:8084/mqtt',
+  'wss://broker.hivemq.com:8884/mqtt',
+];
 
 export class RealtimeManager {
-  private supabase: any = null;
-  private channel: RealtimeChannel | null = null;
+  private client: mqtt.MqttClient | null = null;
   private isHost: boolean = false;
   private currentRoomCode: string | null = null;
   private room: Room | null = null;
   private listeners: Map<string, Set<EventListener>> = new Map();
   private isConnected: boolean = false;
   private myPlayerId: string | null = null;
+  private clientId: string = 'pandu_' + Math.random().toString(36).substring(2, 9);
 
   constructor() {
-    this.initSupabase();
-  }
-
-  private initSupabase(): void {
-    if (!this.supabase && typeof window !== 'undefined') {
-      this.supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-        realtime: {
-          params: {
-            eventsPerSecond: 40,
-          },
-        },
-      });
-    }
+    // Event dispatcher
   }
 
   on<K extends keyof ServerToClientEvents>(event: K, handler: ServerToClientEvents[K]): void {
@@ -69,17 +58,55 @@ export class RealtimeManager {
     }
   }
 
-  private cleanupChannel(): void {
-    if (this.channel) {
+  private cleanupClient(): void {
+    if (this.client) {
       try {
-        this.channel.unsubscribe();
+        this.client.end(true);
       } catch {
         // Ignore
       }
-      this.channel = null;
+      this.client = null;
     }
     this.room = null;
     this.isConnected = false;
+  }
+
+  private connectToBroker(brokerIndex = 0): Promise<mqtt.MqttClient> {
+    return new Promise((resolve, reject) => {
+      const brokerUrl = CLOUD_BROKERS[brokerIndex % CLOUD_BROKERS.length];
+      const client = mqtt.connect(brokerUrl, {
+        clientId: `${this.clientId}_${Date.now()}`,
+        clean: true,
+        connectTimeout: 4000,
+        reconnectPeriod: 2000,
+      });
+
+      const timer = setTimeout(() => {
+        if (!client.connected) {
+          client.end(true);
+          if (brokerIndex < CLOUD_BROKERS.length - 1) {
+            this.connectToBroker(brokerIndex + 1).then(resolve).catch(reject);
+          } else {
+            reject(new Error('Connection timed out'));
+          }
+        }
+      }, 4000);
+
+      client.once('connect', () => {
+        clearTimeout(timer);
+        resolve(client);
+      });
+
+      client.once('error', (err) => {
+        clearTimeout(timer);
+        client.end(true);
+        if (brokerIndex < CLOUD_BROKERS.length - 1) {
+          this.connectToBroker(brokerIndex + 1).then(resolve).catch(reject);
+        } else {
+          reject(err);
+        }
+      });
+    });
   }
 
   // ════════════════════════════════════════════════════════════
@@ -88,8 +115,7 @@ export class RealtimeManager {
 
   async createRoom(playerName: string, avatarId: number): Promise<RoomResponse> {
     try {
-      this.initSupabase();
-      this.cleanupChannel();
+      this.cleanupClient();
 
       const codeChars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
       let code = '';
@@ -98,63 +124,68 @@ export class RealtimeManager {
       }
 
       this.currentRoomCode = code;
-      const channelName = `pandu_${code}`;
+      const topic = `pandu/rooms/${code}/events`;
+
+      const client = await this.connectToBroker();
+      this.client = client;
 
       return new Promise<RoomResponse>((resolve) => {
-        const channel = this.supabase.channel(channelName, {
-          config: {
-            broadcast: { self: true },
-          },
-        });
-        this.channel = channel;
+        client.subscribe(`pandu/rooms/${code}/#`, (err) => {
+          if (err) {
+            return resolve({ success: false, error: 'Failed to create room topic' });
+          }
 
-        channel
-          .on('broadcast', { event: 'guest_join_request' }, (payload: any) => {
-            this.handleGuestJoinOnHost(payload.payload);
-          })
-          .on('broadcast', { event: 'guest_action' }, (payload: any) => {
-            this.handleGuestActionOnHost(payload.payload);
-          })
-          .subscribe((status: string) => {
-            if (status === 'SUBSCRIBED') {
-              this.isHost = true;
-              this.isConnected = true;
-              this.emitLocal('connect');
+          this.isHost = true;
+          this.isConnected = true;
+          this.emitLocal('connect');
 
-              // Initialize Room Controller locally on Host
-              this.room = new Room(code, (event: string, data: unknown, targetPlayerIds?: string[]) => {
-                this.broadcastFromHost(event, data, targetPlayerIds);
-              });
+          // Initialize local authoritative Room engine on Host
+          this.room = new Room(code, (event: string, data: unknown, targetPlayerIds?: string[]) => {
+            this.broadcastFromHost(event, data, targetPlayerIds);
+          });
 
-              const result = this.room.addPlayer(playerName, avatarId, 'host');
-              if ('error' in result) {
-                return resolve({ success: false, error: result.error });
+          const result = this.room.addPlayer(playerName, avatarId, 'host');
+          if ('error' in result) {
+            return resolve({ success: false, error: result.error });
+          }
+
+          const { player, sessionToken } = result;
+          this.myPlayerId = player.id;
+
+          // Message router for Host
+          client.on('message', (t, msgBuffer) => {
+            try {
+              const msg = JSON.parse(msgBuffer.toString());
+              if (msg.senderClientId === this.clientId) return; // Ignore own messages
+
+              if (msg.type === 'guest_join_request') {
+                this.handleGuestJoinOnHost(msg);
+              } else if (msg.type === 'guest_action') {
+                this.handleGuestActionOnHost(msg);
               }
-
-              const { player, sessionToken } = result;
-              this.myPlayerId = player.id;
-
-              resolve({
-                success: true,
-                roomCode: code,
-                sessionToken,
-                playerId: player.id,
-              });
-
-              this.room.broadcastRoomState();
-            } else if (status === 'CHANNEL_ERROR') {
-              resolve({ success: false, error: 'Failed to connect to game cloud server.' });
+            } catch (e) {
+              console.error('[REALTIME MSG ERR]', e);
             }
           });
+
+          resolve({
+            success: true,
+            roomCode: code,
+            sessionToken,
+            playerId: player.id,
+          });
+
+          this.room.broadcastRoomState();
+        });
       });
     } catch (err: any) {
-      return { success: false, error: err.message || 'Creation failed' };
+      return { success: false, error: err.message || 'Room creation failed' };
     }
   }
 
-  private handleGuestJoinOnHost(payload: any): void {
-    if (!this.room) return;
-    const { playerName, avatarId, sessionToken, guestClientId } = payload || {};
+  private handleGuestJoinOnHost(msg: any): void {
+    if (!this.room || !this.client || !this.currentRoomCode) return;
+    const { playerName, avatarId, sessionToken, guestClientId } = msg;
 
     let player: any = null;
     let token = sessionToken;
@@ -166,11 +197,15 @@ export class RealtimeManager {
     if (!player) {
       const result = this.room.addPlayer(playerName, avatarId, guestClientId);
       if ('error' in result) {
-        this.channel?.send({
-          type: 'broadcast',
-          event: `join_response_${guestClientId}`,
-          payload: { success: false, error: result.error },
-        });
+        this.client.publish(
+          `pandu/rooms/${this.currentRoomCode}/join_response`,
+          JSON.stringify({
+            senderClientId: this.clientId,
+            targetGuestId: guestClientId,
+            success: false,
+            error: result.error,
+          })
+        );
         return;
       }
       player = result.player;
@@ -178,41 +213,50 @@ export class RealtimeManager {
     }
 
     // Send successful response to guest
-    this.channel?.send({
-      type: 'broadcast',
-      event: `join_response_${guestClientId}`,
-      payload: {
+    this.client.publish(
+      `pandu/rooms/${this.currentRoomCode}/join_response`,
+      JSON.stringify({
+        senderClientId: this.clientId,
+        targetGuestId: guestClientId,
         success: true,
         roomCode: this.room.code,
         sessionToken: token,
         playerId: player.id,
-      },
-    });
+      })
+    );
 
     this.room.broadcastRoomState();
     this.room.broadcastGameState();
   }
 
-  private handleGuestActionOnHost(payload: any): void {
+  private handleGuestActionOnHost(msg: any): void {
     if (!this.room) return;
-    const { playerId, action, data } = payload || {};
+    const { playerId, action, data } = msg;
     if (!playerId || !action) return;
 
     this.executeActionOnHost(playerId, action, data);
   }
 
   private broadcastFromHost(event: string, data: unknown, targetPlayerIds?: string[]): void {
-    if (!this.channel) return;
+    if (!this.client || !this.currentRoomCode) return;
 
-    this.channel.send({
-      type: 'broadcast',
-      event: 'server_event',
-      payload: {
+    // Dispatch locally to Host if targeted or broadcast
+    const hostPlayerId = this.myPlayerId;
+    if (!targetPlayerIds || (hostPlayerId && targetPlayerIds.includes(hostPlayerId))) {
+      this.emitLocal(event, data);
+    }
+
+    // Broadcast to remote guests
+    this.client.publish(
+      `pandu/rooms/${this.currentRoomCode}/events`,
+      JSON.stringify({
+        senderClientId: this.clientId,
+        type: 'server_event',
         event,
         data,
         targetPlayerIds,
-      },
-    });
+      })
+    );
   }
 
   // ════════════════════════════════════════════════════════════
@@ -221,10 +265,9 @@ export class RealtimeManager {
 
   async joinRoom(roomCode: string, playerName: string, avatarId: number, sessionToken?: string): Promise<RoomResponse> {
     try {
-      this.initSupabase();
       const cleanCode = roomCode.toUpperCase().trim();
 
-      if (this.isConnected && this.currentRoomCode === cleanCode && this.channel) {
+      if (this.isConnected && this.currentRoomCode === cleanCode && this.client?.connected) {
         return {
           success: true,
           roomCode: cleanCode,
@@ -233,11 +276,11 @@ export class RealtimeManager {
         };
       }
 
-      this.cleanupChannel();
+      this.cleanupClient();
       this.currentRoomCode = cleanCode;
 
-      const guestClientId = 'guest_' + Math.random().toString(36).substring(2, 9);
-      const channelName = `pandu_${cleanCode}`;
+      const client = await this.connectToBroker();
+      this.client = client;
 
       return new Promise<RoomResponse>((resolve) => {
         let resolved = false;
@@ -247,63 +290,64 @@ export class RealtimeManager {
             resolved = true;
             resolve({
               success: false,
-              error: `Room "${cleanCode}" not found. Make sure the Host has created the room and is in the lobby!`,
+              error: `Room "${cleanCode}" not found. Make sure the Host has created the room and is currently in the lobby!`,
             });
           }
-        }, 8000);
+        }, 6000);
 
-        const channel = this.supabase.channel(channelName, {
-          config: {
-            broadcast: { self: true },
-          },
+        client.subscribe(`pandu/rooms/${cleanCode}/#`, (err) => {
+          if (err && !resolved) {
+            resolved = true;
+            clearTimeout(timeout);
+            return resolve({ success: false, error: 'Could not connect to room channel.' });
+          }
+
+          this.isHost = false;
+          this.isConnected = true;
+          this.emitLocal('connect');
+
+          // Send join request to Host
+          client.publish(
+            `pandu/rooms/${cleanCode}/events`,
+            JSON.stringify({
+              senderClientId: this.clientId,
+              type: 'guest_join_request',
+              guestClientId: this.clientId,
+              roomCode: cleanCode,
+              playerName,
+              avatarId,
+              sessionToken,
+            })
+          );
         });
-        this.channel = channel;
 
-        // Listen for targeted join response from host
-        channel
-          .on('broadcast', { event: `join_response_${guestClientId}` }, (payload: any) => {
-            if (!resolved) {
-              resolved = true;
-              clearTimeout(timeout);
-              if (payload.payload?.playerId) {
-                this.myPlayerId = payload.payload.playerId;
+        client.on('message', (t, msgBuffer) => {
+          try {
+            const msg = JSON.parse(msgBuffer.toString());
+            if (msg.senderClientId === this.clientId) return; // Ignore own messages
+
+            if (msg.targetGuestId && msg.targetGuestId === this.clientId) {
+              if (!resolved) {
+                resolved = true;
+                clearTimeout(timeout);
+                if (msg.playerId) {
+                  this.myPlayerId = msg.playerId;
+                }
+                resolve(msg);
               }
-              resolve(payload.payload);
+              return;
             }
-          })
-          .on('broadcast', { event: 'server_event' }, (payload: any) => {
-            const { event, data, targetPlayerIds } = payload.payload || {};
-            if (!event) return;
 
-            const myId = this.myPlayerId || sessionStorage.getItem('pandu_player_id');
-            if (!targetPlayerIds || (myId && targetPlayerIds.includes(myId))) {
-              this.emitLocal(event, data);
+            if (msg.type === 'server_event' && msg.event) {
+              const myId = this.myPlayerId || sessionStorage.getItem('pandu_player_id');
+              if (!msg.targetPlayerIds || (myId && msg.targetPlayerIds.includes(myId))) {
+                this.emitLocal(msg.event, msg.data);
+              }
             }
-          })
-          .subscribe((status: string) => {
-            if (status === 'SUBSCRIBED') {
-              this.isHost = false;
-              this.isConnected = true;
-              this.emitLocal('connect');
-
-              // Send Join Request to Host via Realtime Cloud
-              channel.send({
-                type: 'broadcast',
-                event: 'guest_join_request',
-                payload: {
-                  roomCode: cleanCode,
-                  playerName,
-                  avatarId,
-                  sessionToken,
-                  guestClientId,
-                },
-              });
-            } else if (status === 'CHANNEL_ERROR' && !resolved) {
-              resolved = true;
-              clearTimeout(timeout);
-              resolve({ success: false, error: 'Could not connect to room. Please check your internet.' });
-            }
-          });
+          } catch (e) {
+            console.error('[REALTIME GUEST MSG ERR]', e);
+          }
+        });
       });
     } catch (err: any) {
       return { success: false, error: err.message || 'Connection failed' };
@@ -320,16 +364,17 @@ export class RealtimeManager {
 
     if (this.isHost && this.room) {
       this.executeActionOnHost(myId, action, data);
-    } else if (this.channel) {
-      this.channel.send({
-        type: 'broadcast',
-        event: 'guest_action',
-        payload: {
+    } else if (this.client && this.currentRoomCode) {
+      this.client.publish(
+        `pandu/rooms/${this.currentRoomCode}/events`,
+        JSON.stringify({
+          senderClientId: this.clientId,
+          type: 'guest_action',
           playerId: myId,
           action,
           data,
-        },
-      });
+        })
+      );
     }
   }
 
