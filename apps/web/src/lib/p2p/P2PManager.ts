@@ -256,9 +256,12 @@ export class P2PManager {
         const timeout = setTimeout(() => {
           if (!resolved) {
             resolved = true;
-            resolve({ success: false, error: `Room "${cleanCode}" not found. Ensure Host has the room open!` });
+            resolve({
+              success: false,
+              error: `Room "${cleanCode}" not found. Make sure the Host has created the room and is currently in the lobby!`,
+            });
           }
-        }, 12000);
+        }, 6000);
 
         const peer = new PeerClass(PEER_CONFIG);
         this.peer = peer;
