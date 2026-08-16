@@ -153,12 +153,14 @@ export default function GamePage({ params }: { params: Promise<{ roomId: string 
   const handleSkipSpecial = useCallback(() => {
     soundEngine.playCardFlip();
     useGameStore.getState().setRevealedCard(null);
+    setSelectedOwnExchangeCardId(null);
     emitGameAction('game:skipSpecial');
   }, []);
 
   const handleAcknowledgeSpecial = useCallback(() => {
     soundEngine.playCardFlip();
     useGameStore.getState().setRevealedCard(null);
+    setSelectedOwnExchangeCardId(null);
     emitGameAction('game:acknowledgeSpecial');
   }, []);
 
@@ -574,7 +576,7 @@ export default function GamePage({ params }: { params: Promise<{ roomId: string 
               )}
 
               {/* Queen Exchange Prompt */}
-              {isExchangeActive && specialAction.phase === SpecialActionPhase.SELECT_OWN_CARD && !selectedOwnExchangeCardId && (
+              {isExchangeActive && !selectedOwnExchangeCardId && specialAction.phase !== SpecialActionPhase.COMPLETE && (
                 <p className="text-xs text-slate-200 font-bold">
                   👑 Step 1: Tap one of YOUR hand cards below to swap.
                 </p>
@@ -583,6 +585,12 @@ export default function GamePage({ params }: { params: Promise<{ roomId: string 
               {isExchangeActive && selectedOwnExchangeCardId && specialAction.phase !== SpecialActionPhase.COMPLETE && (
                 <p className="text-xs text-emerald-300 font-bold animate-pulse">
                   👑 Step 2: Now tap an OPPONENT'S card above to complete exchange!
+                </p>
+              )}
+
+              {isExchangeActive && specialAction.phase === SpecialActionPhase.COMPLETE && (
+                <p className="text-xs text-emerald-300 font-bold">
+                  👑 Blind exchange complete! Click CONTINUE to end turn.
                 </p>
               )}
 

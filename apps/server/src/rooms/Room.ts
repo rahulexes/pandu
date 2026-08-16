@@ -1020,6 +1020,7 @@ export class Room {
       message: 'Now select a card from another player',
     }, teamPlayerIds);
 
+    this.broadcastGameState();
     return {};
   }
 
@@ -1030,9 +1031,6 @@ export class Room {
     const teamPlayerIds = this.getTeamPlayerIds(this.currentSpecialAction.triggerPlayerId);
     if (!teamPlayerIds.includes(playerId)) {
       return { error: 'This is not your special action' };
-    }
-    if (this.currentSpecialAction.phase !== SpecialActionPhase.SELECT_OTHER_CARD) {
-      return { error: 'Select your own card first' };
     }
     if (!this.currentSpecialAction.selectedOwnCardId) {
       return { error: 'Select your own card first' };
@@ -1070,6 +1068,18 @@ export class Room {
     this.setPlayerHand(playerId, result.ownHand);
     this.setPlayerHand(targetPlayerId, result.otherHand);
 
+    // Reset card knowledge for swapped cards
+    const myState = this.playerStates.get(playerId);
+    if (myState) {
+      myState.knownCardIds.delete(ownCardId);
+      myState.knownCardIds.delete(cardId);
+    }
+    const targetState = this.playerStates.get(targetPlayerId);
+    if (targetState) {
+      targetState.knownCardIds.delete(cardId);
+      targetState.knownCardIds.delete(ownCardId);
+    }
+
     this.currentSpecialAction.phase = SpecialActionPhase.COMPLETE;
 
     this.logger.log(GameEventType.QUEEN_EXCHANGE, {
@@ -1086,6 +1096,13 @@ export class Room {
       otherPlayerId: targetPlayerId,
     });
 
+    this.emitEvent('game:specialAction', {
+      type: SpecialPowerType.BLIND_EXCHANGE,
+      phase: SpecialActionPhase.COMPLETE,
+      message: 'Blind exchange complete! Click CONTINUE to end turn.',
+    }, teamPlayerIds);
+
+    this.broadcastGameState();
     return {};
   }
 
@@ -1102,6 +1119,7 @@ export class Room {
     this.emitEvent('game:cardRevealedExpired', {});
     this.currentSpecialAction = null;
     this.stateMachine.forcePhase(GamePhase.END_TURN);
+    this.broadcastGameState();
     return {};
   }
 
