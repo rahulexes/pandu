@@ -15,10 +15,7 @@ import type {
 
 type EventListener = (...args: any[]) => void;
 
-const CLOUD_BROKERS = [
-  'wss://broker.emqx.io:8084/mqtt',
-  'wss://broker.hivemq.com:8884/mqtt',
-];
+const CLOUD_BROKER = 'wss://broker.emqx.io:8084/mqtt';
 
 export class RealtimeManager {
   private client: mqtt.MqttClient | null = null;
@@ -71,38 +68,38 @@ export class RealtimeManager {
     this.isConnected = false;
   }
 
-  private connectToBroker(brokerIndex = 0): Promise<mqtt.MqttClient> {
+  private connectToBroker(): Promise<mqtt.MqttClient> {
     return new Promise((resolve, reject) => {
-      const brokerUrl = CLOUD_BROKERS[brokerIndex % CLOUD_BROKERS.length];
-      const client = mqtt.connect(brokerUrl, {
+      const client = mqtt.connect(CLOUD_BROKER, {
         clientId: `${this.clientId}_${Date.now()}`,
         clean: true,
-        connectTimeout: 4000,
+        connectTimeout: 6000,
         reconnectPeriod: 2000,
       });
 
+      let resolved = false;
+
       const timer = setTimeout(() => {
-        if (!client.connected) {
+        if (!resolved && !client.connected) {
+          resolved = true;
           client.end(true);
-          if (brokerIndex < CLOUD_BROKERS.length - 1) {
-            this.connectToBroker(brokerIndex + 1).then(resolve).catch(reject);
-          } else {
-            reject(new Error('Connection timed out'));
-          }
+          reject(new Error('Broker connection timed out'));
         }
-      }, 4000);
+      }, 6000);
 
       client.once('connect', () => {
-        clearTimeout(timer);
-        resolve(client);
+        if (!resolved) {
+          resolved = true;
+          clearTimeout(timer);
+          resolve(client);
+        }
       });
 
       client.once('error', (err) => {
-        clearTimeout(timer);
-        client.end(true);
-        if (brokerIndex < CLOUD_BROKERS.length - 1) {
-          this.connectToBroker(brokerIndex + 1).then(resolve).catch(reject);
-        } else {
+        if (!resolved) {
+          resolved = true;
+          clearTimeout(timer);
+          client.end(true);
           reject(err);
         }
       });
@@ -124,13 +121,12 @@ export class RealtimeManager {
       }
 
       this.currentRoomCode = code;
-      const topic = `pandu/rooms/${code}/events`;
 
       const client = await this.connectToBroker();
       this.client = client;
 
       return new Promise<RoomResponse>((resolve) => {
-        client.subscribe(`pandu/rooms/${code}/#`, (err) => {
+        client.subscribe(`pandu/rooms/${code}/#`, { qos: 1 }, (err) => {
           if (err) {
             return resolve({ success: false, error: 'Failed to create room topic' });
           }
@@ -198,13 +194,15 @@ export class RealtimeManager {
       const result = this.room.addPlayer(playerName, avatarId, guestClientId);
       if ('error' in result) {
         this.client.publish(
-          `pandu/rooms/${this.currentRoomCode}/join_response`,
+          `pandu/rooms/${this.currentRoomCode}/events`,
           JSON.stringify({
             senderClientId: this.clientId,
+            type: 'join_response',
             targetGuestId: guestClientId,
             success: false,
             error: result.error,
-          })
+          }),
+          { qos: 1 }
         );
         return;
       }
@@ -214,15 +212,17 @@ export class RealtimeManager {
 
     // Send successful response to guest
     this.client.publish(
-      `pandu/rooms/${this.currentRoomCode}/join_response`,
+      `pandu/rooms/${this.currentRoomCode}/events`,
       JSON.stringify({
         senderClientId: this.clientId,
+        type: 'join_response',
         targetGuestId: guestClientId,
         success: true,
         roomCode: this.room.code,
         sessionToken: token,
         playerId: player.id,
-      })
+      }),
+      { qos: 1 }
     );
 
     this.room.broadcastRoomState();
@@ -255,7 +255,8 @@ export class RealtimeManager {
         event,
         data,
         targetPlayerIds,
-      })
+      }),
+      { qos: 1 }
     );
   }
 
@@ -284,21 +285,31 @@ export class RealtimeManager {
 
       return new Promise<RoomResponse>((resolve) => {
         let resolved = false;
+        let retryInterval: any = null;
+
+        const cleanup = () => {
+          if (retryInterval) {
+            clearInterval(retryInterval);
+            retryInterval = null;
+          }
+        };
 
         const timeout = setTimeout(() => {
           if (!resolved) {
             resolved = true;
+            cleanup();
             resolve({
               success: false,
               error: `Room "${cleanCode}" not found. Make sure the Host has created the room and is currently in the lobby!`,
             });
           }
-        }, 6000);
+        }, 8000);
 
-        client.subscribe(`pandu/rooms/${cleanCode}/#`, (err) => {
+        client.subscribe(`pandu/rooms/${cleanCode}/#`, { qos: 1 }, (err) => {
           if (err && !resolved) {
             resolved = true;
             clearTimeout(timeout);
+            cleanup();
             return resolve({ success: false, error: 'Could not connect to room channel.' });
           }
 
@@ -306,19 +317,27 @@ export class RealtimeManager {
           this.isConnected = true;
           this.emitLocal('connect');
 
-          // Send join request to Host
-          client.publish(
-            `pandu/rooms/${cleanCode}/events`,
-            JSON.stringify({
-              senderClientId: this.clientId,
-              type: 'guest_join_request',
-              guestClientId: this.clientId,
-              roomCode: cleanCode,
-              playerName,
-              avatarId,
-              sessionToken,
-            })
-          );
+          const sendJoin = () => {
+            if (client.connected && !resolved) {
+              client.publish(
+                `pandu/rooms/${cleanCode}/events`,
+                JSON.stringify({
+                  senderClientId: this.clientId,
+                  type: 'guest_join_request',
+                  guestClientId: this.clientId,
+                  roomCode: cleanCode,
+                  playerName,
+                  avatarId,
+                  sessionToken,
+                }),
+                { qos: 1 }
+              );
+            }
+          };
+
+          // Send immediate join request + retry loop until host answers
+          sendJoin();
+          retryInterval = setInterval(sendJoin, 600);
         });
 
         client.on('message', (t, msgBuffer) => {
@@ -326,10 +345,11 @@ export class RealtimeManager {
             const msg = JSON.parse(msgBuffer.toString());
             if (msg.senderClientId === this.clientId) return; // Ignore own messages
 
-            if (msg.targetGuestId && msg.targetGuestId === this.clientId) {
+            if (msg.type === 'join_response' && msg.targetGuestId === this.clientId) {
               if (!resolved) {
                 resolved = true;
                 clearTimeout(timeout);
+                cleanup();
                 if (msg.playerId) {
                   this.myPlayerId = msg.playerId;
                 }
@@ -373,7 +393,8 @@ export class RealtimeManager {
           playerId: myId,
           action,
           data,
-        })
+        }),
+        { qos: 1 }
       );
     }
   }
