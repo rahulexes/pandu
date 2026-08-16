@@ -211,33 +211,33 @@ function CardFront({ rank, suit, dims }: { rank: Rank; suit: Suit; dims: typeof 
 function CardBack({ dims }: { dims: typeof SIZE_MAP.md }) {
   return (
     <div
-      className="w-full h-full relative overflow-hidden"
+      className="w-full h-full relative overflow-hidden flex items-center justify-center"
       style={{
-        background: 'linear-gradient(135deg, #1e3a5f 0%, #2a4a6f 50%, #1e3a5f 100%)',
+        background: 'linear-gradient(145deg, #070e1b 0%, #0d1a30 50%, #050a14 100%)',
         borderRadius: dims.radius,
-        border: '1px solid rgba(255, 255, 255, 0.1)',
+        border: '1.5px solid rgba(251, 191, 36, 0.4)',
+        boxShadow: 'inset 0 0 12px rgba(0, 0, 0, 0.8)',
       }}
     >
-      {/* Diamond pattern */}
-      <div className="absolute inset-2 rounded-sm border border-amber-400/30 flex items-center justify-center">
-        <div className="w-3/4 h-3/4 rounded-sm border border-amber-400/20 flex items-center justify-center">
-          <span className="text-amber-400/40 font-bold" style={{ fontSize: dims.fontSize * 1.2 }}>
-            P
+      {/* Outer gold pinstripe frame */}
+      <div className="absolute inset-1.5 rounded-sm border border-amber-400/40 flex items-center justify-center pointer-events-none">
+        {/* Inner geometric gold frame */}
+        <div className="w-[82%] h-[82%] rounded-sm border border-amber-400/25 flex flex-col items-center justify-center relative bg-black/30">
+          <span className="text-amber-300 drop-shadow-[0_2px_8px_rgba(245,158,11,0.6)] select-none" style={{ fontSize: dims.fontSize * 1.3 }}>
+            👑
+          </span>
+          <span className="text-[8px] font-black tracking-widest uppercase text-amber-400/70 font-mono mt-0.5">
+            PANDU
           </span>
         </div>
       </div>
 
-      {/* Subtle pattern overlay */}
+      {/* Cyber Diamond Pattern Overlay */}
       <div
-        className="absolute inset-0 opacity-10"
+        className="absolute inset-0 opacity-15 pointer-events-none"
         style={{
-          backgroundImage: `repeating-linear-gradient(
-            45deg,
-            transparent,
-            transparent 4px,
-            rgba(255,255,255,0.05) 4px,
-            rgba(255,255,255,0.05) 8px
-          )`,
+          backgroundImage: `radial-gradient(circle at 50% 50%, rgba(251, 191, 36, 0.2) 1px, transparent 1px)`,
+          backgroundSize: '8px 8px',
         }}
       />
     </div>
@@ -263,7 +263,7 @@ export function DeckStack({
     <motion.div
       className={`relative cursor-pointer ${className}`}
       onClick={onClick}
-      whileHover={{ scale: 1.05 }}
+      whileHover={{ scale: 1.06 }}
       whileTap={{ scale: 0.95 }}
     >
       {/* Stacked card backs */}
@@ -274,12 +274,12 @@ export function DeckStack({
           style={{
             width: 72,
             height: 104,
-            top: -i * 1.5,
+            top: -i * 2,
             left: i * 0.5,
-            background: 'linear-gradient(135deg, #1e3a5f, #2a4a6f)',
+            background: 'linear-gradient(145deg, #070e1b, #0d1a30)',
             borderRadius: 8,
-            border: '1px solid rgba(255, 255, 255, 0.1)',
-            boxShadow: '0 1px 4px rgba(0, 0, 0, 0.3)',
+            border: '1.5px solid rgba(251, 191, 36, 0.35)',
+            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.7)',
           }}
         />
       ))}

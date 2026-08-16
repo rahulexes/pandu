@@ -115,24 +115,24 @@ export default function HomePage() {
   }, [roomCode, name, avatarId, router]);
 
   return (
-    <div className="min-h-dvh flex flex-col items-center justify-center p-6 relative overflow-hidden bg-[#070b14] text-slate-100">
+    <div className="min-h-dvh flex flex-col items-center justify-center p-6 relative overflow-hidden bg-[#030712] text-slate-100">
       {/* Dynamic ambient background glows */}
-      <div className="absolute inset-0 bg-radial from-[#13271c] via-[#0a1220] to-[#060a12] opacity-90 pointer-events-none" />
-      <div className="absolute -top-32 -left-32 w-96 h-96 rounded-full bg-amber-500/10 blur-3xl pointer-events-none" />
-      <div className="absolute top-1/3 -right-32 w-96 h-96 rounded-full bg-violet-500/10 blur-3xl pointer-events-none" />
+      <div className="absolute inset-0 bg-radial from-[#0d1a29]/70 via-[#030712] to-[#010409] opacity-95 pointer-events-none" />
+      <div className="absolute -top-40 -left-40 w-[500px] h-[500px] rounded-full bg-amber-500/10 blur-[120px] pointer-events-none" />
+      <div className="absolute top-1/2 -right-40 w-[500px] h-[500px] rounded-full bg-violet-600/10 blur-[120px] pointer-events-none" />
 
       {/* ── Top Permanent Profile Bar ── */}
       <div className="absolute top-6 left-6 right-6 flex items-center justify-between z-20 max-w-md mx-auto">
-        <div className="flex items-center gap-3 bg-white/5 hover:bg-white/10 backdrop-blur px-3.5 py-2 rounded-2xl border border-white/10 transition-all">
+        <div className="flex items-center gap-3 bg-white/5 hover:bg-white/10 backdrop-blur-xl px-4 py-2 rounded-2xl border border-white/10 shadow-lg shadow-black/50 transition-all">
           <Avatar avatarId={avatarId} size={36} />
           <div className="text-left">
-            <p className="text-xs font-bold text-slate-200 truncate max-w-[120px]">{name || 'Player'}</p>
-            <p className="text-[10px] text-amber-400 font-semibold">Device Profile</p>
+            <p className="text-xs font-bold text-slate-100 truncate max-w-[120px]">{name || 'Player'}</p>
+            <p className="text-[10px] text-amber-400 font-bold uppercase tracking-wider">Profile</p>
           </div>
         </div>
 
         <button
-          className="p-2.5 rounded-2xl bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white border border-white/10 transition-all cursor-pointer flex items-center gap-1.5 text-xs font-bold"
+          className="p-2.5 rounded-2xl bg-white/5 hover:bg-white/10 text-slate-200 hover:text-white border border-white/10 shadow-lg shadow-black/50 transition-all cursor-pointer flex items-center gap-1.5 text-xs font-bold"
           onClick={() => {
             soundEngine.playCardFlip();
             setShowSettings(true);
@@ -150,19 +150,21 @@ export default function HomePage() {
       >
         {/* Glowing Logo */}
         <div className="text-center mb-8">
-          <h1 className="font-display text-6xl tracking-widest bg-gradient-to-r from-amber-300 via-amber-400 to-amber-500 bg-clip-text text-transparent drop-shadow-[0_4px_25px_rgba(245,158,11,0.35)]">
-            PANDU
-          </h1>
-          <p className="text-slate-400 text-xs mt-2 font-bold tracking-[0.3em] uppercase">
+          <div className="inline-block relative">
+            <h1 className="font-display text-6xl sm:text-7xl tracking-widest bg-gradient-to-r from-amber-200 via-amber-400 to-amber-500 bg-clip-text text-transparent drop-shadow-[0_4px_30px_rgba(245,158,11,0.45)]">
+              PANDU
+            </h1>
+          </div>
+          <p className="text-slate-400 text-xs mt-2.5 font-black tracking-[0.35em] uppercase">
             Multiplayer Online Card Game
           </p>
         </div>
 
         {/* Server Connection Status */}
-        <div className="flex items-center justify-center gap-2 mb-6">
-          <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-          <span className="text-xs text-slate-400">
-            Multiplayer Ready (Worldwide P2P)
+        <div className="flex items-center justify-center gap-2 mb-6 bg-black/40 border border-white/5 py-1.5 px-4 rounded-full w-fit mx-auto shadow-inner">
+          <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
+          <span className="text-[11px] font-bold text-slate-300 tracking-wide">
+            Realtime Cloud Multiplayer Ready
           </span>
         </div>
 

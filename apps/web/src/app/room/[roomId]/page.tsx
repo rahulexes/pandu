@@ -88,17 +88,17 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
   const maxInitialViewable = Math.floor((room?.settings.cardsDealt || 4) / 2);
 
   return (
-    <div className="min-h-dvh flex flex-col relative overflow-hidden bg-[#070b14] text-slate-100">
+    <div className="min-h-dvh flex flex-col relative overflow-hidden bg-[#030712] text-slate-100">
       {/* Dynamic ambient background glows */}
-      <div className="absolute inset-0 bg-radial from-[#13271c] via-[#0a1220] to-[#060a12] opacity-90 pointer-events-none" />
-      <div className="absolute -top-32 -left-32 w-96 h-96 rounded-full bg-amber-500/10 blur-3xl pointer-events-none" />
-      <div className="absolute top-1/3 -right-32 w-96 h-96 rounded-full bg-violet-500/10 blur-3xl pointer-events-none" />
+      <div className="absolute inset-0 bg-radial from-[#0c1824]/60 via-[#030712] to-[#010308] opacity-95 pointer-events-none" />
+      <div className="absolute -top-40 -left-40 w-[450px] h-[450px] rounded-full bg-amber-500/10 blur-[120px] pointer-events-none" />
+      <div className="absolute top-1/3 -right-40 w-[450px] h-[450px] rounded-full bg-violet-600/10 blur-[120px] pointer-events-none" />
 
       <div className="relative z-10 flex flex-col flex-1 max-w-xl mx-auto w-full p-4 sm:p-6 pb-28">
         {/* Top Navbar */}
         <header className="flex items-center justify-between mb-5">
           <button
-            className="text-xs sm:text-sm text-slate-400 hover:text-white px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 transition-all flex items-center gap-1.5"
+            className="text-xs sm:text-sm text-slate-300 hover:text-white px-3.5 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 shadow-md transition-all flex items-center gap-1.5 cursor-pointer font-bold"
             onClick={() => {
               soundEngine.playCardFlip();
               emitGameAction('room:leave');
@@ -109,16 +109,16 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
           </button>
           
           <div className="flex items-center gap-2">
-            <h1 className="font-display text-2xl tracking-wider bg-gradient-to-r from-amber-300 via-amber-400 to-amber-500 bg-clip-text text-transparent drop-shadow-[0_2px_10px_rgba(245,158,11,0.3)]">
+            <h1 className="font-display text-2xl tracking-wider bg-gradient-to-r from-amber-200 via-amber-400 to-amber-500 bg-clip-text text-transparent drop-shadow-[0_2px_12px_rgba(245,158,11,0.4)]">
               PANDU
             </h1>
-            <span className="text-[10px] uppercase font-bold tracking-widest px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30">
-              Lobby
+            <span className="text-[10px] uppercase font-black tracking-widest px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow-inner">
+              LOBBY
             </span>
           </div>
 
           <button
-            className="text-sm p-2 rounded-lg bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white transition-all"
+            className="text-sm p-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-200 hover:text-white border border-white/10 shadow-md transition-all cursor-pointer"
             onClick={handleToggleMute}
             title={isMuted ? 'Unmute Sound' : 'Mute Sound'}
           >
@@ -128,25 +128,25 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
 
         {/* VIP Room Code Share Card */}
         <motion.div
-          className="glass rounded-2xl p-4 sm:p-5 mb-5 relative overflow-hidden border border-amber-500/20"
+          className="glass rounded-3xl p-4 sm:p-5 mb-5 relative overflow-hidden border border-amber-500/30 shadow-2xl shadow-black/80"
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
         >
           <div className="flex items-center justify-between">
             <div>
-              <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-widest block mb-0.5">
-                Private Room Code
+              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-0.5">
+                VIP Private Room Code
               </span>
-              <span className="text-3xl sm:text-4xl font-mono font-black tracking-[0.25em] text-transparent bg-clip-text bg-gradient-to-r from-amber-200 via-amber-400 to-amber-500">
+              <span className="text-3xl sm:text-4xl font-mono font-black tracking-[0.28em] text-transparent bg-clip-text bg-gradient-to-r from-amber-200 via-amber-400 to-amber-500 drop-shadow-[0_0_15px_rgba(245,158,11,0.3)]">
                 {roomId}
               </span>
             </div>
 
             <button
-              className={`px-4 py-2.5 rounded-xl font-semibold text-sm transition-all duration-200 flex items-center gap-2 ${
+              className={`px-4 py-2.5 rounded-2xl font-black text-xs tracking-wider uppercase transition-all duration-200 flex items-center gap-2 cursor-pointer ${
                 copied
-                  ? 'bg-emerald-500 text-slate-950 shadow-lg shadow-emerald-500/30'
-                  : 'bg-gradient-to-r from-amber-500/20 to-amber-600/20 hover:from-amber-500/30 hover:to-amber-600/30 text-amber-300 border border-amber-500/30'
+                  ? 'bg-emerald-500 text-slate-950 shadow-lg shadow-emerald-500/40'
+                  : 'bg-gradient-to-r from-amber-500/20 to-amber-600/20 hover:from-amber-500/30 hover:to-amber-600/30 text-amber-300 border border-amber-500/40 shadow-lg'
               }`}
               onClick={copyInviteLink}
             >

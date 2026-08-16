@@ -177,7 +177,7 @@ export default function GamePage({ params }: { params: Promise<{ roomId: string 
   const selectedSwapCard = gameState?.myHand.find(c => c.id === selectedSwapHandCardId);
 
   return (
-    <div className="game-table min-h-dvh flex flex-col justify-between select-none relative overflow-hidden bg-[#070e17]">
+    <div className="game-table min-h-dvh flex flex-col justify-between select-none relative overflow-hidden bg-[#02050c]">
       {/* Top Floating Error */}
       <AnimatePresence>
         {error && (
@@ -193,16 +193,16 @@ export default function GamePage({ params }: { params: Promise<{ roomId: string 
       </AnimatePresence>
 
       {/* ── Top Bar ── */}
-      <div className="flex items-center justify-between px-4 py-2.5 relative z-20 bg-black/30 border-b border-white/5">
-        <div className="flex items-center gap-2 text-xs text-slate-400">
-          <span>Room:</span>
-          <span className="text-amber-400 font-mono font-bold tracking-wider">{roomId}</span>
+      <div className="flex items-center justify-between px-4 py-2.5 relative z-20 bg-black/50 backdrop-blur-md border-b border-white/5 shadow-md">
+        <div className="flex items-center gap-2 text-xs text-slate-300">
+          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Room</span>
+          <span className="text-amber-400 font-mono font-black tracking-widest bg-amber-400/10 px-2 py-0.5 rounded border border-amber-400/20">{roomId}</span>
         </div>
 
         {timeRemaining !== null && (
           <motion.div
-            className={`text-sm font-bold font-mono px-3.5 py-1 rounded-full ${
-              timeRemaining < 5000 ? 'text-rose-400 bg-rose-400/20 border border-rose-400/30' : 'text-amber-400 bg-amber-400/20 border border-amber-400/30'
+            className={`text-xs font-black font-mono px-3.5 py-1 rounded-full shadow-inner ${
+              timeRemaining < 5000 ? 'text-rose-400 bg-rose-500/20 border border-rose-400/40' : 'text-amber-300 bg-amber-500/20 border border-amber-400/40'
             }`}
             animate={timeRemaining < 5000 ? { scale: [1, 1.08, 1] } : {}}
             transition={{ duration: 0.5, repeat: Infinity }}
@@ -212,11 +212,11 @@ export default function GamePage({ params }: { params: Promise<{ roomId: string 
         )}
 
         <button
-          className="text-xs px-2.5 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-slate-200 transition-all cursor-pointer"
+          className="text-xs px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-200 border border-white/10 shadow-sm transition-all cursor-pointer font-bold"
           onClick={handleToggleMute}
           title={isMuted ? 'Unmute Sound' : 'Mute Sound'}
         >
-          {isMuted ? '🔇 Muted' : '🔊 Sound'}
+          {isMuted ? '🔇' : '🔊'}
         </button>
       </div>
 
@@ -229,8 +229,8 @@ export default function GamePage({ params }: { params: Promise<{ roomId: string 
           return (
             <motion.div
               key={opponent.playerId}
-              className={`glass rounded-2xl p-3 text-center transition-all ${
-                opponent.isActive ? 'border-amber-400 bg-amber-400/10 shadow-[0_0_20px_rgba(245,158,11,0.25)]' : 'border-white/5'
+              className={`glass rounded-2xl p-3 text-center transition-all shadow-xl ${
+                opponent.isActive ? 'border-amber-400/80 bg-amber-500/15 shadow-[0_0_25px_rgba(245,158,11,0.35)] ring-1 ring-amber-400' : 'border-white/5'
               } ${opponent.isEliminated ? 'opacity-30' : ''}`}
               layout
             >
@@ -792,49 +792,45 @@ function ScoreScreen({ scores, roomId }: { scores: any[]; roomId: string }) {
   const RANK_BADGES = ['🥇', '🥈', '🥉'];
 
   return (
-    <div className="min-h-dvh flex flex-col items-center justify-center p-6 relative overflow-hidden bg-[#070e17]">
-      <div className="absolute inset-0 bg-gradient-to-br from-[#0a0f1a] via-[#0d1628] to-[#0a1a2e]" />
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[600px] rounded-full bg-amber-500/10 blur-3xl" />
+    <div className="min-h-dvh flex flex-col items-center justify-center p-6 relative overflow-hidden bg-[#030712] text-slate-100">
+      <div className="absolute inset-0 bg-radial from-[#0e192c]/70 via-[#030712] to-[#01040a] opacity-95" />
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[600px] rounded-full bg-amber-500/10 blur-[130px]" />
 
       <motion.div
         className="relative z-10 w-full max-w-md space-y-4"
         initial={{ opacity: 0, y: 30 }}
         animate={{ opacity: 1, y: 0 }}
       >
-        <h1 className="font-display text-3xl text-center" style={{
-          background: 'linear-gradient(135deg, #f0c040, #e8a020)',
-          WebkitBackgroundClip: 'text',
-          WebkitTextFillColor: 'transparent',
-        }}>
-          Game Over!
+        <h1 className="font-display text-4xl text-center tracking-wider bg-gradient-to-r from-amber-200 via-amber-400 to-amber-500 bg-clip-text text-transparent drop-shadow-[0_4px_25px_rgba(245,158,11,0.45)]">
+          MATCH RESULTS
         </h1>
 
         <div className="space-y-3 mt-6">
           {scores.map((score, i) => (
             <motion.div
               key={score.playerId}
-              className={`glass rounded-xl p-4 flex items-center gap-3 ${
-                score.rank === 1 ? 'border-amber-400/40 bg-amber-400/5' : ''
+              className={`glass rounded-2xl p-4 flex items-center gap-3 shadow-xl ${
+                score.rank === 1 ? 'border-amber-400/60 bg-amber-500/10 shadow-[0_0_30px_rgba(245,158,11,0.25)] ring-1 ring-amber-400/40' : 'border-white/5'
               }`}
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: i * 0.1 }}
             >
-              <div className="text-2xl w-10 text-center">
+              <div className="text-2xl w-10 text-center drop-shadow-md">
                 {score.rank <= 3 ? RANK_BADGES[score.rank - 1] : `#${score.rank}`}
               </div>
-              <Avatar avatarId={score.avatarId} size={40} />
-              <div className="flex-1">
-                <p className="font-semibold">{score.playerName}</p>
-                <div className="flex gap-1 mt-1">
+              <Avatar avatarId={score.avatarId} size={42} />
+              <div className="flex-1 min-w-0">
+                <p className="font-bold text-sm text-slate-100 truncate">{score.playerName}</p>
+                <div className="flex gap-1 mt-1.5 flex-wrap">
                   {score.cards.map((card: ClientCard) => (
                     <Card key={card.id} card={card} size="sm" />
                   ))}
                 </div>
               </div>
               <div className="text-right">
-                <p className="text-2xl font-bold text-amber-400">{score.score}</p>
-                <p className="text-xs text-slate-400">pts</p>
+                <p className="text-2xl font-black font-mono text-amber-400 drop-shadow-[0_0_10px_rgba(245,158,11,0.4)]">{score.score}</p>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">pts</p>
               </div>
             </motion.div>
           ))}
@@ -842,7 +838,7 @@ function ScoreScreen({ scores, roomId }: { scores: any[]; roomId: string }) {
 
         <div className="flex gap-3 mt-8">
           <button
-            className={`flex-1 py-3 px-4 rounded-xl font-black text-sm tracking-wider transition-all cursor-pointer shadow-xl ${
+            className={`flex-1 py-3.5 px-4 rounded-2xl font-black text-sm tracking-wider uppercase transition-all cursor-pointer shadow-xl ${
               hasVotedRematch
                 ? 'bg-amber-500/30 border-2 border-amber-400 text-amber-200 animate-pulse'
                 : 'btn-primary'
@@ -857,7 +853,7 @@ function ScoreScreen({ scores, roomId }: { scores: any[]; roomId: string }) {
               : `🔄 Rematch (${rematchVotes.length}/${effectiveTotal})`}
           </button>
           <button
-            className="btn-secondary flex-1 cursor-pointer"
+            className="btn-secondary flex-1 rounded-2xl font-bold cursor-pointer"
             onClick={() => {
               emitGameAction('game:returnToLobby');
             }}
