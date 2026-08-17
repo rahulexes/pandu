@@ -85,7 +85,6 @@ export function useSocket() {
       if (data.card) {
         setDrawnCard(data.card);
       }
-      useGameStore.getState().triggerFlight('draw', data);
       soundEngine.playCardDraw();
       vibrate(50);
     });
@@ -95,23 +94,25 @@ export function useSocket() {
       if (data.card) {
         useGameStore.getState().addDiscard(data.card);
       }
-      useGameStore.getState().triggerFlight('discard', data);
       soundEngine.playCardFlip();
     });
 
     realtimeManager.on('game:cardReplaced', (data: any) => {
       useGameStore.getState().setDrawnCard(null);
-      useGameStore.getState().triggerFlight('replace', data);
+      if (data.newCard?.id) {
+        useGameStore.getState().triggerCardBlink(data.newCard.id);
+      }
       soundEngine.playCardFlip();
     });
 
     realtimeManager.on('game:exchangeComplete', (data: any) => {
       const cardIds = [data?.ownCardId, data?.otherCardId].filter(Boolean);
-      useGameStore.getState().setBlinkingExchangedCardIds(cardIds.length > 0 ? cardIds : null);
+      if (cardIds.length > 0) {
+        useGameStore.getState().triggerCardBlink(cardIds);
+      }
       useGameStore.getState().setExchangedBanner(true);
       setTimeout(() => {
         useGameStore.getState().setExchangedBanner(false);
-        useGameStore.getState().setBlinkingExchangedCardIds(null);
       }, 1500);
       soundEngine.playSpecialPower();
     });

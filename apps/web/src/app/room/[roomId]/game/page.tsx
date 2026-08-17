@@ -12,7 +12,6 @@ import { useRoomStore } from '@/stores/roomStore';
 import { useGameStore } from '@/stores/gameStore';
 import { Card, DeckStack } from '@/components/cards/Card';
 import { Avatar } from '@/components/lobby/AvatarPicker';
-import { CardFlightAnimationOverlay, FlyingCardAnim } from '@/components/cards/CardFlightAnimation';
 import { GamePhase, SpecialPowerType, SpecialActionPhase, GameMode } from '@pandu/shared';
 import type { ClientCard } from '@pandu/shared';
 import { soundEngine } from '@/lib/audio';
@@ -34,9 +33,7 @@ export default function GamePage({ params }: { params: Promise<{ roomId: string 
   const penaltyPrompt = useGameStore((s) => s.penaltyPrompt);
   const xReactionWrong = useGameStore((s) => s.xReactionWrong);
   const exchangedBanner = useGameStore((s) => s.exchangedBanner);
-  const blinkingExchangedCardIds = useGameStore((s) => s.blinkingExchangedCardIds);
-  const flightEvents = useGameStore((s) => s.flightEvents);
-  const removeFlight = useGameStore((s) => s.removeFlight);
+  const blinkingCardIds = useGameStore((s) => s.blinkingCardIds);
   const myPlayerId = useRoomStore((s) => s.myPlayerId);
 
   const [isMuted, setIsMuted] = useState(false);
@@ -45,7 +42,6 @@ export default function GamePage({ params }: { params: Promise<{ roomId: string 
   const [selectedOtherExchangePlayerId, setSelectedOtherExchangePlayerId] = useState<string | null>(null);
   const [selectedSwapHandCardId, setSelectedSwapHandCardId] = useState<string | null>(null);
   const [swapDiscardPreview, setSwapDiscardPreview] = useState<ClientCard | null>(null);
-  const [activeFlights, setActiveFlights] = useState<FlyingCardAnim[]>([]);
 
   // DOM Refs for animation coordinates
   const drawDeckRef = useRef<HTMLDivElement>(null);
@@ -83,107 +79,6 @@ export default function GamePage({ params }: { params: Promise<{ roomId: string 
     const el = document.getElementById(elementId);
     if (el) return el.getBoundingClientRect();
     return null;
-  };
-
-  // Process flight animation events strictly once (Idempotent single card glides)
-  useEffect(() => {
-    if (!flightEvents || flightEvents.length === 0) return;
-
-    flightEvents.forEach((ev) => {
-      const deckRect = drawDeckRef.current?.getBoundingClientRect();
-      const discardRect = discardPileRef.current?.getBoundingClientRect();
-      const actionRect = actionCenterRef.current?.getBoundingClientRect();
-      const handRect = myHandRef.current?.getBoundingClientRect();
-
-      const defaultDeckX = deckRect?.left ?? window.innerWidth / 2 - 80;
-      const defaultDeckY = deckRect?.top ?? window.innerHeight / 2 - 50;
-      const defaultDiscardX = discardRect?.left ?? window.innerWidth / 2 + 50;
-      const defaultDiscardY = discardRect?.top ?? window.innerHeight / 2 - 50;
-
-      if (ev.type === 'draw') {
-        const isMe = ev.data.playerId === myPlayerId;
-        const targetX = isMe
-          ? (actionRect?.left ?? window.innerWidth / 2 - 36)
-          : window.innerWidth / 2 - 36;
-        const targetY = isMe
-          ? (actionRect?.top ?? window.innerHeight / 2 + 40)
-          : 60;
-
-        setActiveFlights((prev) => [
-          ...prev,
-          {
-            id: ev.id,
-            card: ev.data.card,
-            startX: defaultDeckX,
-            startY: defaultDeckY,
-            endX: targetX,
-            endY: targetY,
-            duration: 0.55,
-            rotateStart: -6,
-            rotateEnd: 0,
-            arcHeight: 35,
-          },
-        ]);
-      } else if (ev.type === 'discard') {
-        const cardId = ev.data.cardId || ev.data.card?.id;
-        const sourceSlotRect = cardId ? getCardRect(`my-card-slot-${cardId}`) : null;
-
-        const fromX = sourceSlotRect
-          ? sourceSlotRect.left
-          : (actionRect?.left ?? defaultDeckX);
-        const fromY = sourceSlotRect
-          ? sourceSlotRect.top
-          : (actionRect?.top ?? defaultDeckY);
-
-        setActiveFlights((prev) => [
-          ...prev,
-          {
-            id: ev.id,
-            card: ev.data.card,
-            startX: fromX,
-            startY: fromY,
-            endX: defaultDiscardX,
-            endY: defaultDiscardY,
-            duration: 0.6,
-            rotateStart: 4,
-            rotateEnd: -4,
-            arcHeight: 45,
-            highlighted: true,
-          },
-        ]);
-      } else if (ev.type === 'replace') {
-        const oldCardId = ev.data.oldCardId || ev.data.discardedCard?.id;
-        const sourceSlotRect = oldCardId ? getCardRect(`my-card-slot-${oldCardId}`) : null;
-
-        const fromX = sourceSlotRect?.left ?? (handRect?.left ?? window.innerWidth / 2 - 36);
-        const fromY = sourceSlotRect?.top ?? (handRect?.top ?? window.innerHeight - 140);
-
-        setActiveFlights((prev) => [
-          ...prev,
-          {
-            id: ev.id,
-            card: ev.data.discardedCard,
-            startX: fromX,
-            startY: fromY,
-            endX: defaultDiscardX,
-            endY: defaultDiscardY,
-            duration: 0.65,
-            scaleStart: 1,
-            scaleEnd: 1,
-            rotateStart: 2,
-            rotateEnd: -3,
-            arcHeight: 50,
-            highlighted: true,
-          },
-        ]);
-      }
-
-      removeFlight(ev.id);
-    });
-  }, [flightEvents, myPlayerId, removeFlight]);
-
-  const handleFlightComplete = (id: string) => {
-    setActiveFlights((prev) => prev.filter((f) => f.id !== id));
   };
 
   // Timer countdown
@@ -231,32 +126,13 @@ export default function GamePage({ params }: { params: Promise<{ roomId: string 
   // Handle placement of penalty card directly into a chosen slot index without reindexing remaining cards
   const handlePlacePenaltyAtSlot = useCallback((slotIndex?: number) => {
     soundEngine.playCardFlip();
-    const floatingRect = floatingPenaltyRef.current?.getBoundingClientRect();
-    const targetSlotId = typeof slotIndex === 'number'
-      ? (gameState?.myHand[slotIndex] === null ? `my-card-slot-empty-${slotIndex}` : `my-card-slot-new-${slotIndex}`)
-      : `my-card-slot-new-${gameState?.myHand.length || 0}`;
-    const slotRect = getCardRect(targetSlotId);
-
-    if (floatingRect && slotRect) {
-      setActiveFlights((prev) => [
-        ...prev,
-        {
-          id: `penalty_placement_${Date.now()}`,
-          card: { id: penaltyPrompt?.cardId || 'penalty', faceUp: false },
-          startX: floatingRect.left,
-          startY: floatingRect.top,
-          endX: slotRect.left,
-          endY: slotRect.top,
-          duration: 0.55,
-          arcHeight: 25,
-          highlighted: true,
-        },
-      ]);
+    const penaltyCardId = penaltyPrompt?.cardId;
+    if (penaltyCardId) {
+      useGameStore.getState().triggerCardBlink(penaltyCardId);
     }
-
     useGameStore.getState().setPenaltyPrompt(null);
     emitGameAction('game:placePenaltyCard', { slotIndex });
-  }, [penaltyPrompt, gameState]);
+  }, [penaltyPrompt]);
 
   const handleEndTurn = useCallback(() => {
     soundEngine.playCardFlip();
@@ -391,7 +267,7 @@ export default function GamePage({ params }: { params: Promise<{ roomId: string 
         );
       }
 
-      const isBlinkingExchanged = (blinkingExchangedCardIds?.includes(card.id)) ?? false;
+      const isBlinking = (blinkingCardIds?.includes(card.id)) ?? false;
 
       if (isOpponent) {
         const isTargetableForOtherPeek = isOtherPeekActive;
@@ -412,17 +288,17 @@ export default function GamePage({ params }: { params: Promise<{ roomId: string 
             key={card.id || idx}
             id={`opp-card-slot-${opponentId}-${card.id}`}
             animate={
-              isBlinkingExchanged
+              isBlinking
                 ? { opacity: [1, 0.15, 1, 0.15, 1], scale: [1, 1.15, 1, 1.15, 1] }
                 : {}
             }
             transition={
-              isBlinkingExchanged
+              isBlinking
                 ? { duration: 1.5, times: [0, 0.25, 0.5, 0.75, 1], ease: 'easeInOut' }
                 : {}
             }
             className={`transition-all duration-300 transform ${
-              isBlinkingExchanged
+              isBlinking
                 ? 'ring-4 ring-amber-400 rounded-lg shadow-[0_0_30px_rgba(245,158,11,0.9)] z-40'
                 : isSelectedOther
                 ? '-translate-y-5 scale-110 ring-4 ring-emerald-400 rounded-lg shadow-[0_20px_35px_rgba(52,211,153,0.7)] z-30 animate-bounce'
@@ -472,17 +348,17 @@ export default function GamePage({ params }: { params: Promise<{ roomId: string 
           key={card.id || idx}
           id={`my-card-slot-${card.id}`}
           animate={
-            isBlinkingExchanged
+            isBlinking
               ? { opacity: [1, 0.15, 1, 0.15, 1], scale: [1, 1.15, 1, 1.15, 1] }
               : {}
           }
           transition={
-            isBlinkingExchanged
+            isBlinking
               ? { duration: 1.5, times: [0, 0.25, 0.5, 0.75, 1], ease: 'easeInOut' }
               : {}
           }
           className={`transition-all duration-300 transform ${
-            isBlinkingExchanged
+            isBlinking
               ? 'ring-4 ring-amber-400 rounded-xl shadow-[0_0_35px_rgba(245,158,11,0.9)] z-40'
               : isSelectedForExchange
               ? '-translate-y-5 scale-110 ring-4 ring-amber-400 rounded-xl shadow-[0_20px_35px_rgba(245,158,11,0.7)] z-30 animate-bounce'
@@ -574,8 +450,6 @@ export default function GamePage({ params }: { params: Promise<{ roomId: string 
 
   return (
     <div className="game-table min-h-dvh flex flex-col justify-between select-none relative overflow-hidden bg-[#131314] text-[#e3e3e3]">
-      {/* Floating Card Flight Animation Overlay */}
-      <CardFlightAnimationOverlay flights={activeFlights} onComplete={handleFlightComplete} />
 
       {/* ── 1.2s Center "EXCHANGED" Pop-up ── */}
       <AnimatePresence>

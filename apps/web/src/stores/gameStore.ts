@@ -95,13 +95,8 @@ interface GameState {
   // Exchanged Pop-up & Blinking Cards
   exchangedBanner: boolean;
   setExchangedBanner: (show: boolean) => void;
-  blinkingExchangedCardIds: string[] | null;
-  setBlinkingExchangedCardIds: (ids: string[] | null) => void;
-
-  // Flight animations
-  flightEvents: { id: string; type: 'draw' | 'discard' | 'replace' | 'exchange'; data: any }[];
-  triggerFlight: (type: 'draw' | 'discard' | 'replace' | 'exchange', data: any) => void;
-  removeFlight: (id: string) => void;
+  blinkingCardIds: string[];
+  triggerCardBlink: (ids: string | string[]) => void;
 
   // Elimination
   eliminatePlayer: (data: { playerId: string; playerName: string; rank: number }) => void;
@@ -113,16 +108,18 @@ interface GameState {
 export const useGameStore = create<GameState>((set, get) => ({
   exchangedBanner: false,
   setExchangedBanner: (show) => set({ exchangedBanner: show }),
-  blinkingExchangedCardIds: null,
-  setBlinkingExchangedCardIds: (ids) => set({ blinkingExchangedCardIds: ids }),
-
-  flightEvents: [],
-  triggerFlight: (type, data) => set((state) => ({
-    flightEvents: [...state.flightEvents, { id: `${type}_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`, type, data }],
-  })),
-  removeFlight: (id) => set((state) => ({
-    flightEvents: state.flightEvents.filter(f => f.id !== id),
-  })),
+  blinkingCardIds: [],
+  triggerCardBlink: (ids) => {
+    const list = Array.isArray(ids) ? ids : [ids];
+    set((state) => ({
+      blinkingCardIds: [...state.blinkingCardIds, ...list],
+    }));
+    setTimeout(() => {
+      set((state) => ({
+        blinkingCardIds: state.blinkingCardIds.filter((id) => !list.includes(id)),
+      }));
+    }, 1500);
+  },
 
   gameState: null,
   rematchVotes: [],
