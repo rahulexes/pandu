@@ -92,6 +92,11 @@ interface GameState {
   drawPileCount: number;
   setDrawPileCount: (count: number) => void;
 
+  // Flight animations
+  flightEvents: { id: string; type: 'draw' | 'discard' | 'replace' | 'exchange'; data: any }[];
+  triggerFlight: (type: 'draw' | 'discard' | 'replace' | 'exchange', data: any) => void;
+  removeFlight: (id: string) => void;
+
   // Elimination
   eliminatePlayer: (data: { playerId: string; playerName: string; rank: number }) => void;
 
@@ -100,6 +105,14 @@ interface GameState {
 }
 
 export const useGameStore = create<GameState>((set, get) => ({
+  flightEvents: [],
+  triggerFlight: (type, data) => set((state) => ({
+    flightEvents: [...state.flightEvents, { id: `${type}_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`, type, data }],
+  })),
+  removeFlight: (id) => set((state) => ({
+    flightEvents: state.flightEvents.filter(f => f.id !== id),
+  })),
+
   gameState: null,
   rematchVotes: [],
   totalPlayers: 0,
@@ -110,12 +123,13 @@ export const useGameStore = create<GameState>((set, get) => ({
     if (prev.gameState && state.phase === GamePhase.INITIAL_VIEW) {
       const currentlyFaceUp = new Map<string, ClientCard>();
       for (const card of prev.gameState.myHand) {
-        if (card.faceUp) {
+        if (card && card.faceUp) {
           currentlyFaceUp.set(card.id, card);
         }
       }
       if (currentlyFaceUp.size > 0) {
         myHand = state.myHand.map(card => {
+          if (!card) return null;
           const peeked = currentlyFaceUp.get(card.id);
           return peeked ? { ...card, rank: peeked.rank, suit: peeked.suit, faceUp: true } : card;
         });
@@ -142,7 +156,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   turnInfo: null,
   setTurnInfo: (info) => set((state) => {
     // When turn starts, all cards in hand flip back to facedown
-    const myHand = state.gameState?.myHand.map(c => ({ ...c, faceUp: false })) || [];
+    const myHand = state.gameState?.myHand.map(c => c ? ({ ...c, faceUp: false }) : null) || [];
     return {
       turnInfo: info,
       drawnCard: null,
@@ -224,7 +238,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     set((state) => {
       if (!state.gameState) return {};
       const myHand = state.gameState.myHand.map(c =>
-        c.id === cardId ? { ...c, rank: card.rank, suit: card.suit, faceUp: true } : c
+        c && c.id === cardId ? { ...c, rank: card.rank, suit: card.suit, faceUp: true } : c
       );
       return {
         gameState: { ...state.gameState, myHand },
@@ -237,7 +251,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       set((state) => {
         if (!state.gameState) return {};
         const myHand = state.gameState.myHand.map(c =>
-          c.id === cardId ? { ...c, faceUp: false } : c
+          c && c.id === cardId ? { ...c, faceUp: false } : c
         );
         return {
           gameState: { ...state.gameState, myHand },

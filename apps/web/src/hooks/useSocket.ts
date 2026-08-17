@@ -81,21 +81,33 @@ export function useSocket() {
       }
     });
 
-    realtimeManager.on('game:cardDrawn', ({ card }) => {
-      setDrawnCard(card);
+    realtimeManager.on('game:cardDrawn', (data: any) => {
+      if (data.card) {
+        setDrawnCard(data.card);
+      }
+      useGameStore.getState().triggerFlight('draw', data);
       soundEngine.playCardDraw();
       vibrate(50);
     });
 
-    realtimeManager.on('game:cardDiscarded', ({ card }) => {
+    realtimeManager.on('game:cardDiscarded', (data: any) => {
       useGameStore.getState().setDrawnCard(null);
-      useGameStore.getState().addDiscard(card);
+      if (data.card) {
+        useGameStore.getState().addDiscard(data.card);
+      }
+      useGameStore.getState().triggerFlight('discard', data);
       soundEngine.playCardFlip();
     });
 
-    realtimeManager.on('game:cardReplaced', () => {
+    realtimeManager.on('game:cardReplaced', (data: any) => {
       useGameStore.getState().setDrawnCard(null);
+      useGameStore.getState().triggerFlight('replace', data);
       soundEngine.playCardFlip();
+    });
+
+    realtimeManager.on('game:exchangeComplete', (data: any) => {
+      useGameStore.getState().triggerFlight('exchange', data);
+      soundEngine.playSpecialPower();
     });
 
     // ── Special Actions ──

@@ -86,15 +86,15 @@ export interface ServerToClientEvents {
 
   // ── Turn ──
   'game:turnStart': (data: { playerId: string; teamId?: string; playerName: string; turnNumber: number }) => void;
-  'game:cardDrawn': (data: { card: ClientCard }) => void;
-  'game:cardDiscarded': (data: { cardId: string; card: ClientCard }) => void;
-  'game:cardReplaced': (data: { oldCardId: string; newCard: ClientCard; discardedCard: ClientCard; handPosition: number }) => void;
+  'game:cardDrawn': (data: { card?: ClientCard; playerId: string }) => void;
+  'game:cardDiscarded': (data: { cardId: string; card: ClientCard; playerId?: string }) => void;
+  'game:cardReplaced': (data: { oldCardId: string; newCard: ClientCard; discardedCard: ClientCard; handPosition: number; playerId?: string }) => void;
 
   // ── Special Actions ──
   'game:specialAction': (data: { type: SpecialPowerType; phase: SpecialActionPhase; message: string }) => void;
   'game:cardRevealed': (data: { cardId: string; targetPlayerId?: string; card: ClientCard; durationMs: number }) => void;
   'game:cardRevealedExpired': (data: {}) => void;
-  'game:exchangeComplete': (data: { ownCardId: string; otherCardId: string; otherPlayerId: string }) => void;
+  'game:exchangeComplete': (data: { ownCardId: string; otherCardId: string; otherPlayerId: string; playerId?: string }) => void;
 
   // ── X Reaction ──
   'game:xReactionWindow': (data: { triggerCardId: string; durationMs: number }) => void;

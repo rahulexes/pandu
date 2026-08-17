@@ -59,8 +59,8 @@ export interface Player {
 /** Player state during an active game */
 export interface PlayerGameState {
   playerId: string;
-  /** Card IDs in hand (order matters for position) */
-  handCardIds: string[];
+  /** Card IDs in hand (order matters for position, null represents empty slot) */
+  handCardIds: (string | null)[];
   /** Card IDs the player has peeked at (knows the identity of) */
   knownCardIds: Set<string>;
   /** Number of initial peeks used */
@@ -89,8 +89,8 @@ export interface Team {
 
 export interface TeamGameState {
   teamId: string;
-  /** Card IDs in shared hand */
-  handCardIds: string[];
+  /** Card IDs in shared hand (null represents empty slot) */
+  handCardIds: (string | null)[];
   /** Card IDs known by the team */
   knownCardIds: Set<string>;
   initialPeeksUsed: number;
@@ -233,8 +233,8 @@ export interface ClientGameState {
   visibleDiscards: ClientCard[];
 
   // ── My hand ──
-  myHand: ClientCard[];
-  myTeamHand?: ClientCard[];
+  myHand: (ClientCard | null)[];
+  myTeamHand?: (ClientCard | null)[];
 
   // ── Opponents ──
   opponents: ClientOpponent[];
@@ -289,7 +289,7 @@ export interface ClientOpponent {
   name: string;
   avatarId: number;
   cardCount: number;
-  cards: ClientCard[];
+  cards: (ClientCard | null)[];
   isActive: boolean;
   isConnected: boolean;
   isEliminated: boolean;

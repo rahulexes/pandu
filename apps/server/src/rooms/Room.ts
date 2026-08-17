@@ -93,6 +93,7 @@ export class Room {
     type: SpecialPowerType;
     phase: SpecialActionPhase;
     triggerPlayerId: string;
+    selectedCardId?: string;
     selectedOwnCardId?: string;
     selectedOtherCardId?: string;
     targetPlayerId?: string;
@@ -535,7 +536,7 @@ export class Room {
       return { error: 'Not in initial viewing phase' };
     }
 
-    let hand: string[];
+    let hand: (string | null)[];
     let peeksUsed: number;
     let maxPeeks: number = this.settings.initialViewable;
 
@@ -621,8 +622,7 @@ export class Room {
   private startPlayerTurn(): void {
     if (!this.turnSystem) return;
 
-    // Reset penalty locks and fast-reaction trackers on turn change
-    this.penaltyLockedPlayers.clear();
+    // Reset fast-reaction trackers on turn change
     this.xReactedTopCardId = null;
 
     // Skip any players with 0 cards remaining
@@ -776,7 +776,7 @@ export class Room {
     if (!this.drawnCardId) return { error: 'No card drawn' };
 
     // Get the correct hand (individual or team)
-    let hand: string[];
+    let hand: (string | null)[];
     if (this.settings.mode === GameMode.INDIVIDUAL) {
       const state = this.playerStates.get(playerId);
       if (!state) return { error: 'Player state not found' };
@@ -1181,7 +1181,7 @@ export class Room {
   // X REACTION (Real-time fast discard)
   // ════════════════════════════════════════════════════════
 
-  private penaltyLockedPlayers = new Set<string>();
+  private xReactionAttemptedPlayers = new Set<string>();
   private xReactedTopCardId: string | null = null;
   private pendingPenaltyCards = new Map<string, string>();
 
@@ -1194,19 +1194,22 @@ export class Room {
       return { error: 'Fast discard not allowed in this phase' };
     }
 
-    if (this.penaltyLockedPlayers.has(playerId)) {
-      return { error: 'You are locked out of fast discard until the next turn' };
-    }
-
     const topDiscardId = this.discardPile[this.discardPile.length - 1];
     if (this.xReactedTopCardId === topDiscardId) {
       return { error: 'Fast discard already used for this top card' };
+    }
+
+    if (this.xReactionAttemptedPlayers.has(playerId)) {
+      return { error: 'You have already used your fast discard attempt for this card' };
     }
 
     const hand = this.getPlayerHand(playerId);
     if (!hand || !hand.includes(cardId)) {
       return { error: 'Card not in your hand' };
     }
+
+    // Record attempt for this top discard card
+    this.xReactionAttemptedPlayers.add(playerId);
 
     const topDiscardCard = this.allCards.get(topDiscardId)!;
     const candidateCard = this.allCards.get(cardId)!;
@@ -1217,15 +1220,16 @@ export class Room {
     const player = this.players.get(playerId);
 
     if (isMatch) {
-      // SUCCESS! Remove from hand and add to discard pile
+      // SUCCESS! Set slot to null to maintain fixed position
       const idx = hand.indexOf(cardId);
       if (idx !== -1) {
-        hand.splice(idx, 1);
+        hand[idx] = null;
         this.setPlayerHand(playerId, hand);
       }
       addToDiscardPile(this.discardPile, cardId);
-      this.xReactedTopCardId = cardId; // Only 1 card per top card
-      this.penaltyLockedPlayers.clear(); // Reset on new discard
+      this.xReactedTopCardId = cardId;
+      // Reset attempts for all players because top card changed
+      this.xReactionAttemptedPlayers.clear();
 
       this.logger.log(GameEventType.X_REACTION_ATTEMPT, { playerId, cardId, success: true });
 
@@ -1233,19 +1237,19 @@ export class Room {
       this.emitEvent('game:cardDiscarded', {
         cardId,
         card: { id: candidateCard.id, rank: candidateCard.rank, suit: candidateCard.suit, faceUp: true },
+        playerId,
       });
 
       // Check elimination
-      if (hand.length === 0) {
+      const remainingCards = hand.filter(Boolean).length;
+      if (remainingCards === 0) {
         this.eliminatePlayerOrTeam(playerId);
       }
 
       this.broadcastGameState();
       return {};
     } else {
-      // MISMATCH: Reveal card to all players for 3s, then return & deal penalty card with placement option
-      this.penaltyLockedPlayers.add(playerId);
-
+      // MISMATCH: Reveal card to all players for 3s, then return & deal penalty card
       this.emitEvent('game:xReactionWrong', {
         playerId,
         playerName: player?.name || 'Unknown',
@@ -1287,9 +1291,19 @@ export class Room {
     const hand = this.getPlayerHand(playerId);
     if (hand) {
       if (position === 'LEFT') {
-        hand.unshift(cardId);
+        const firstEmptyIdx = hand.indexOf(null);
+        if (firstEmptyIdx !== -1 && firstEmptyIdx === 0) {
+          hand[0] = cardId;
+        } else {
+          hand.unshift(cardId);
+        }
       } else {
-        hand.push(cardId);
+        const lastEmptyIdx = hand.lastIndexOf(null);
+        if (lastEmptyIdx !== -1 && lastEmptyIdx === hand.length - 1) {
+          hand[lastEmptyIdx] = cardId;
+        } else {
+          hand.push(cardId);
+        }
       }
       this.setPlayerHand(playerId, hand);
     }
@@ -1445,17 +1459,21 @@ export class Room {
 
     if (this.settings.mode === GameMode.INDIVIDUAL) {
       for (const [playerId, state] of this.playerStates) {
-        allHands[playerId] = state.handCardIds.map(id => {
-          const card = this.allCards.get(id)!;
-          return { id: card.id, rank: card.rank, suit: card.suit, faceUp: true };
-        });
+        allHands[playerId] = state.handCardIds
+          .filter((id): id is string => id !== null)
+          .map(id => {
+            const card = this.allCards.get(id)!;
+            return { id: card.id, rank: card.rank, suit: card.suit, faceUp: true };
+          });
       }
     } else {
       for (const [teamId, state] of this.teamStates) {
-        allHands[teamId] = state.handCardIds.map(id => {
-          const card = this.allCards.get(id)!;
-          return { id: card.id, rank: card.rank, suit: card.suit, faceUp: true };
-        });
+        allHands[teamId] = state.handCardIds
+          .filter((id): id is string => id !== null)
+          .map(id => {
+            const card = this.allCards.get(id)!;
+            return { id: card.id, rank: card.rank, suit: card.suit, faceUp: true };
+          });
       }
     }
 
@@ -1472,7 +1490,9 @@ export class Room {
           playerId,
           playerName: player?.name || 'Unknown',
           avatarId: player?.avatarId || 0,
-          cards: state.handCardIds.map(id => this.allCards.get(id)!),
+          cards: state.handCardIds
+            .filter((id): id is string => id !== null)
+            .map(id => this.allCards.get(id)!),
           calledPandu: state.calledPandu,
           preAssignedRank: state.finishRank,
         });
@@ -1486,7 +1506,9 @@ export class Room {
           avatarId: 0,
           teamId,
           teamName: team?.name,
-          cards: state.handCardIds.map(id => this.allCards.get(id)!),
+          cards: state.handCardIds
+            .filter((id): id is string => id !== null)
+            .map(id => this.allCards.get(id)!),
           calledPandu: state.calledPandu,
           preAssignedRank: state.finishRank,
         });
@@ -1549,7 +1571,7 @@ export class Room {
   // HELPERS
   // ════════════════════════════════════════════════════════
 
-  private getPlayerHand(entityId: string): string[] | null {
+  private getPlayerHand(entityId: string): (string | null)[] | null {
     if (this.settings.mode === GameMode.INDIVIDUAL) {
       return this.playerStates.get(entityId)?.handCardIds ?? null;
     } else {
@@ -1564,7 +1586,7 @@ export class Room {
     }
   }
 
-  private setPlayerHand(entityId: string, hand: string[]): void {
+  private setPlayerHand(entityId: string, hand: (string | null)[]): void {
     if (this.settings.mode === GameMode.INDIVIDUAL) {
       const state = this.playerStates.get(entityId);
       if (state) state.handCardIds = hand;
@@ -1619,10 +1641,10 @@ export class Room {
 
     // My hand — always face down on the table in physical gameplay (shared by team in Team Mode)
     const hand = this.getPlayerHand(playerId) || [];
-    const myHand: ClientCard[] = hand.map(id => ({
+    const myHand: (ClientCard | null)[] = hand.map(id => id ? ({
       id,
       faceUp: false,
-    }));
+    }) : null);
 
     // Visible discards (top 2)
     const visibleDiscardIds = getVisibleDiscards(this.discardPile, 2);
@@ -1643,8 +1665,8 @@ export class Room {
           playerId: pid,
           name: player.name,
           avatarId: player.avatarId,
-          cardCount: opponentHand.length,
-          cards: opponentHand.map(id => ({ id, faceUp: false })),
+          cardCount: opponentHand.filter(Boolean).length,
+          cards: opponentHand.map(id => id ? ({ id, faceUp: false }) : null),
           isActive: this.turnSystem?.activePlayerId === pid,
           isConnected: player.isConnected,
           isEliminated: opponentState?.isEliminated || false,
@@ -1667,8 +1689,8 @@ export class Room {
           playerId: otherTeamId,
           name: `${team.name} (${teamMemberNames})`,
           avatarId: firstPlayer?.avatarId || 0,
-          cardCount: teamHand.length,
-          cards: teamHand.map(id => ({ id, faceUp: false })),
+          cardCount: teamHand.filter(Boolean).length,
+          cards: teamHand.map(id => id ? ({ id, faceUp: false }) : null),
           isActive: isTeamActive,
           isConnected: team.playerIds.some(pid => this.players.get(pid)?.isConnected),
           isEliminated: teamState?.isEliminated || false,

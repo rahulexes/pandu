@@ -19,7 +19,7 @@ export function getSpecialPower(card: Card): SpecialPowerType {
 export function validateSelfPeek(
   playerId: string,
   cardId: string,
-  hand: string[],
+  hand: (string | null)[],
 ): { valid: boolean; error?: string } {
   if (!hand.includes(cardId)) {
     return { valid: false, error: 'Selected card is not in your hand' };
@@ -31,7 +31,7 @@ export function validateOtherPeek(
   playerId: string,
   targetPlayerId: string,
   cardId: string,
-  targetHand: string[],
+  targetHand: (string | null)[],
 ): { valid: boolean; error?: string } {
   if (playerId === targetPlayerId) {
     return { valid: false, error: 'Cannot target your own cards with this power' };
@@ -45,7 +45,7 @@ export function validateOtherPeek(
 export function validateExchangeOwnCard(
   playerId: string,
   cardId: string,
-  ownHand: string[],
+  ownHand: (string | null)[],
 ): { valid: boolean; error?: string } {
   if (!ownHand.includes(cardId)) {
     return { valid: false, error: 'Selected card is not in your hand' };
@@ -57,7 +57,7 @@ export function validateExchangeOtherCard(
   playerId: string,
   targetPlayerId: string,
   cardId: string,
-  targetHand: string[],
+  targetHand: (string | null)[],
 ): { valid: boolean; error?: string } {
   if (playerId === targetPlayerId) {
     return { valid: false, error: 'Cannot exchange with yourself' };
@@ -69,11 +69,11 @@ export function validateExchangeOtherCard(
 }
 
 export function executeBlindExchange(
-  ownHand: string[],
+  ownHand: (string | null)[],
   ownCardId: string,
-  otherHand: string[],
+  otherHand: (string | null)[],
   otherCardId: string,
-): { ownHand: string[]; otherHand: string[] } {
+): { ownHand: (string | null)[]; otherHand: (string | null)[] } {
   const ownIndex = ownHand.indexOf(ownCardId);
   const otherIndex = otherHand.indexOf(otherCardId);
 
