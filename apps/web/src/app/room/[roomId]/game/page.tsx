@@ -527,48 +527,50 @@ export default function GamePage({ params }: { params: Promise<{ roomId: string 
       </div>
 
       {/* ── Top Bar ── */}
-      <div className="flex items-center justify-between px-4 py-2 relative z-20 bg-[#1e1f20]/90 backdrop-blur-md border-b border-white/5 shadow-md">
-        <div className="flex items-center gap-2 text-xs text-[#c4c7c5]">
-          <span className="text-[10px] font-bold text-[#8e918f] uppercase tracking-wider">Room</span>
-          <span className="text-[#9b72cb] font-mono font-black tracking-widest bg-[#131314] px-2.5 py-0.5 rounded-full border border-violet-500/20">{roomId}</span>
-        </div>
+      <div className="w-full bg-[#1e1f20]/90 backdrop-blur-md border-b border-white/5 shadow-md relative z-20">
+        <div className="max-w-7xl mx-auto flex items-center justify-between px-4 sm:px-6 md:px-8 py-2">
+          <div className="flex items-center gap-2 text-xs text-[#c4c7c5]">
+            <span className="text-[10px] font-bold text-[#8e918f] uppercase tracking-wider">Room</span>
+            <span className="text-[#9b72cb] font-mono font-black tracking-widest bg-[#131314] px-2.5 py-0.5 rounded-full border border-violet-500/20">{roomId}</span>
+          </div>
 
-        {timeRemaining !== null && (
-          <motion.div
-            className={`text-xs font-black font-mono px-3.5 py-1 rounded-full shadow-inner ${
-              timeRemaining < 5000 ? 'text-rose-400 bg-rose-500/20 border border-rose-400/40' : 'text-[#9b72cb] bg-violet-500/20 border border-[#9b72cb]/40'
-            }`}
-            animate={timeRemaining < 5000 ? { scale: [1, 1.08, 1] } : {}}
-            transition={{ duration: 0.5, repeat: Infinity }}
+          {timeRemaining !== null && (
+            <motion.div
+              className={`text-xs font-black font-mono px-3.5 py-1 rounded-full shadow-inner ${
+                timeRemaining < 5000 ? 'text-rose-400 bg-rose-500/20 border border-rose-400/40' : 'text-[#9b72cb] bg-violet-500/20 border border-[#9b72cb]/40'
+              }`}
+              animate={timeRemaining < 5000 ? { scale: [1, 1.08, 1] } : {}}
+              transition={{ duration: 0.5, repeat: Infinity }}
+            >
+              ⏱️ {Math.ceil(timeRemaining / 1000)}s
+            </motion.div>
+          )}
+
+          <button
+            className="text-xs px-3 py-1.5 rounded-full bg-[#131314] hover:bg-[#282a2c] text-[#c4c7c5] border border-white/10 shadow-sm transition-all cursor-pointer font-bold"
+            onClick={handleToggleMute}
+            title={isMuted ? 'Unmute Sound' : 'Mute Sound'}
           >
-            ⏱️ {Math.ceil(timeRemaining / 1000)}s
-          </motion.div>
-        )}
-
-        <button
-          className="text-xs px-3 py-1.5 rounded-full bg-[#131314] hover:bg-[#282a2c] text-[#c4c7c5] border border-white/10 shadow-sm transition-all cursor-pointer font-bold"
-          onClick={handleToggleMute}
-          title={isMuted ? 'Unmute Sound' : 'Mute Sound'}
-        >
-          {isMuted ? '🔇' : '🔊'}
-        </button>
+            {isMuted ? '🔇' : '🔊'}
+          </button>
+        </div>
       </div>
 
       {/* ── Opponents Area (Max 6 in Line 1, 7th in Line 2) ── */}
-      <div className="px-4 py-1.5 flex justify-center gap-5 flex-wrap relative z-10">
+      <div className="w-full max-w-7xl mx-auto px-4 md:px-8 py-1.5 flex justify-center gap-4 md:gap-7 flex-wrap relative z-10">
         {gameState?.opponents.map((opponent) => {
           return (
             <motion.div
               key={opponent.playerId}
-              className={`glass rounded-2xl p-2.5 text-center transition-all shadow-xl ${
+              className={`glass rounded-2xl p-2.5 md:p-3 text-center transition-all shadow-xl ${
                 opponent.isActive ? 'border-[#9b72cb] bg-violet-500/10 shadow-[0_0_25px_rgba(155,114,203,0.3)] ring-1 ring-[#9b72cb]' : 'border-white/5'
               } ${opponent.isEliminated ? 'opacity-30' : ''}`}
               layout
             >
               {/* Opponent Header */}
               <div className="flex items-center justify-center gap-2 mb-1.5">
-                <Avatar avatarId={opponent.avatarId} size={24} />
-                <span className="text-xs font-bold text-slate-200 truncate max-w-[90px]">{opponent.name}</span>
+                <Avatar avatarId={opponent.avatarId} size={26} />
+                <span className="text-xs md:text-sm font-bold text-slate-200 truncate max-w-[110px]">{opponent.name}</span>
                 {opponent.isActive && (
                   <span className="text-[9px] bg-amber-400/20 text-amber-300 font-bold px-1.5 py-0.5 rounded-full border border-amber-400/30">
                     Turn
@@ -577,7 +579,7 @@ export default function GamePage({ params }: { params: Promise<{ roomId: string 
               </div>
 
               {/* Opponent Hand Grid */}
-              <div className="min-h-[76px] py-1 flex items-center justify-center">
+              <div className="min-h-[76px] md:min-h-[84px] py-1 flex items-center justify-center">
                 {opponent.cards && opponent.cards.length > 0 ? (
                   renderHandGrid(opponent.cards, true, opponent.playerId)
                 ) : (
@@ -651,9 +653,9 @@ export default function GamePage({ params }: { params: Promise<{ roomId: string 
       </div>
 
       {/* ── Center Table Area (Decks & Action Zone) ── */}
-      <div className="flex-1 flex flex-col items-center justify-center relative z-10 px-4">
+      <div className="w-full max-w-5xl mx-auto flex-1 flex flex-col items-center justify-center relative z-10 px-4 py-2">
         {/* Draw & Discard Piles */}
-        <div className="flex items-center justify-center gap-8 mb-2">
+        <div className="flex items-center justify-center gap-8 md:gap-14 mb-2">
           {/* Draw Pile */}
           <div ref={drawDeckRef} className="flex flex-col items-center">
             <DeckStack
@@ -925,7 +927,7 @@ export default function GamePage({ params }: { params: Promise<{ roomId: string 
       </div>
 
       {/* ── Player's Hand (Max 6 in Line 1, 7th alone in Line 2) ── */}
-      <div ref={myHandRef} className="px-4 pb-12 pt-1.5 relative z-10">
+      <div ref={myHandRef} className="w-full max-w-5xl mx-auto px-4 pb-12 md:pb-14 pt-1.5 relative z-10">
         <div className="flex items-center justify-center gap-2 mb-1.5">
           <p className="text-center text-[10px] md:text-[11px] font-bold text-slate-400 uppercase tracking-widest">
             {gameState?.settings.mode === GameMode.TEAM ? '🤝 Team Hand' : 'Your Hand'} ({gameState?.myHand.filter(Boolean).length || 0} Cards)
