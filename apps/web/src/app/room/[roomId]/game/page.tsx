@@ -216,10 +216,9 @@ export default function GamePage({ params }: { params: Promise<{ roomId: string 
     emitGameAction('game:acknowledgeSpecial');
   }, []);
 
-  // ── Sequential Card-by-Card Reveal (Last Place -> 1st Place, 1 card / 0.25s) ──
+  // ── Sequential Card-by-Card Reveal (Last Place -> 1st Place, 1 card / 0.75s) ──
   const [showFinalStandings, setShowFinalStandings] = useState(false);
   const [revealedSlots, setRevealedSlots] = useState<Set<string>>(new Set());
-  const [currentRevealingName, setCurrentRevealingName] = useState<string | null>(null);
 
   const isGameEnding = Boolean(
     (scores && scores.length > 0) ||
@@ -244,20 +243,19 @@ export default function GamePage({ params }: { params: Promise<{ roomId: string 
         const t = setTimeout(() => {
           if (isCancelled) return;
           soundEngine.playCardFlip();
-          setCurrentRevealingName(player.playerName);
           setRevealedSlots((prev) => new Set([...prev, slotKey]));
         }, totalDelay);
         timeouts.push(t);
-        totalDelay += 250; // 0.25s per card
+        totalDelay += 750; // 0.75s per card
       }
     });
 
-    // After all players' cards are revealed, wait 2 seconds, then show Final Standings
+    // After all players' cards are revealed, wait 5 seconds, then show Final Standings
     const finalTimer = setTimeout(() => {
       if (isCancelled) return;
       soundEngine.playVictory();
       setShowFinalStandings(true);
-    }, totalDelay + 2000);
+    }, totalDelay + 5000);
     timeouts.push(finalTimer);
 
     return () => {
@@ -992,29 +990,6 @@ export default function GamePage({ params }: { params: Promise<{ roomId: string 
         </AnimatePresence>
       </div>
 
-      {/* ── Sequential Reveal Floating Notification Banner ── */}
-      {isGameEnding && !showFinalStandings && (
-        <div className="fixed top-14 md:top-18 left-1/2 -translate-x-1/2 z-50 pointer-events-none w-[90%] max-w-lg">
-          <motion.div
-            className="p-3 md:p-4 rounded-2xl bg-[#141724]/95 border-2 border-amber-400 shadow-[0_0_40px_rgba(245,158,11,0.7)] backdrop-blur-xl text-center flex items-center justify-center gap-3.5"
-            initial={{ opacity: 0, y: -20, scale: 0.9 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-          >
-            <span className="text-2xl md:text-3xl animate-bounce">🎴</span>
-            <div>
-              <p className="text-xs md:text-sm font-black uppercase tracking-wider text-amber-300">
-                REVEALING CARDS (LAST PLACE → 1ST PLACE)
-              </p>
-              {currentRevealingName && (
-                <p className="text-[11px] md:text-xs text-slate-300 font-bold mt-0.5">
-                  Revealing hand of <span className="text-white font-black">{currentRevealingName}</span>...
-                </p>
-              )}
-            </div>
-          </motion.div>
-        </div>
-      )}
-
       {/* ── Player's Hand (Max 6 in Line 1, 7th alone in Line 2) ── */}
       <div ref={myHandRef} className="w-full max-w-5xl mx-auto px-4 pb-12 md:pb-14 pt-1.5 relative z-10">
         <div className="flex items-center justify-center gap-2 mb-1.5 flex-wrap">
@@ -1038,7 +1013,7 @@ export default function GamePage({ params }: { params: Promise<{ roomId: string 
   );
 }
 
-// ── Clean Final Standings Screen (Name, Rank with PANDU Crown for #1, and Score) ──
+// ── Clean Final Standings Screen (Name, Rank with 👑 Crown for #1, and Score) ──
 
 function ScoreScreen({ scores, roomId }: { scores: any[]; roomId: string }) {
   const router = useRouter();
@@ -1062,7 +1037,7 @@ function ScoreScreen({ scores, roomId }: { scores: any[]; roomId: string }) {
           </p>
         </header>
 
-        {/* ── Standings List (Name, Rank with PANDU Crown for 1st, and Score) ── */}
+        {/* ── Standings List (Name, Rank with 👑 Crown for 1st, and Score) ── */}
         <div className="flex flex-col gap-3.5 w-full my-4">
           {sorted.map((s, i) => {
             const isWinner = i === 0;
@@ -1099,16 +1074,9 @@ function ScoreScreen({ scores, roomId }: { scores: any[]; roomId: string }) {
                   <Avatar avatarId={s.avatarId} size={44} />
 
                   <div>
-                    <div className="flex items-center gap-2">
-                      <h3 className={`font-black text-base sm:text-lg ${isWinner ? 'text-amber-300' : 'text-white'}`}>
-                        {s.playerName}
-                      </h3>
-                      {isWinner && (
-                        <span className="text-[10px] font-black text-amber-400 bg-amber-400/20 px-2 py-0.5 rounded-full border border-amber-400/40">
-                          PANDU CROWN
-                        </span>
-                      )}
-                    </div>
+                    <h3 className={`font-black text-base sm:text-lg ${isWinner ? 'text-amber-300' : 'text-white'}`}>
+                      {s.playerName}
+                    </h3>
                     {s.teamName && (
                       <span className="text-[11px] font-bold text-purple-300 bg-purple-500/20 px-2 py-0.5 rounded-full mt-0.5 inline-block">
                         {s.teamName}
