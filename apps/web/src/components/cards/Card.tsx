@@ -166,26 +166,44 @@ export function Card({
 }
 
 function CardFront({ rank, suit, dims }: { rank: Rank; suit: Suit; dims: typeof SIZE_MAP.md }) {
-  const imgSrc = `/cards/fronts/${suit}_${rank}.png`;
+  const color = SUIT_COLORS[suit] || '#0f172a';
+  const symbol = SUIT_SYMBOLS[suit] || '★';
 
   return (
     <div
-      className="w-full h-full relative overflow-hidden flex items-center justify-center select-none bg-[#f8f6f2]"
+      className="w-full h-full flex flex-col relative"
       style={{
+        background: 'linear-gradient(145deg, #ffffff 0%, #f1f5f9 50%, #e2e8f0 100%)',
         borderRadius: dims.radius,
-        boxShadow: 'inset 0 0 6px rgba(0, 0, 0, 0.08), 0 2px 8px rgba(0, 0, 0, 0.25)',
+        border: '1px solid rgba(0, 0, 0, 0.1)',
       }}
     >
-      {/* Authentic Custom Vintage Card Front */}
-      <img
-        src={imgSrc}
-        alt={`${rank} of ${suit}`}
-        className="w-full h-full object-cover select-none pointer-events-none"
-        style={{
-          borderRadius: dims.radius,
-        }}
-        draggable={false}
-      />
+      {/* Top-left rank + suit */}
+      <div className="absolute top-1 left-1.5 flex flex-col items-center leading-none">
+        <span style={{ fontSize: dims.fontSize, fontWeight: 800, color, lineHeight: 1 }}>
+          {rank}
+        </span>
+        <span style={{ fontSize: dims.suitSize * 0.7, color, lineHeight: 1 }}>
+          {symbol}
+        </span>
+      </div>
+
+      {/* Center suit */}
+      <div className="flex-1 flex items-center justify-center">
+        <span style={{ fontSize: dims.suitSize * 1.8, color, opacity: 0.9 }}>
+          {symbol}
+        </span>
+      </div>
+
+      {/* Bottom-right rank + suit (inverted) */}
+      <div className="absolute bottom-1 right-1.5 flex flex-col items-center leading-none rotate-180">
+        <span style={{ fontSize: dims.fontSize, fontWeight: 800, color, lineHeight: 1 }}>
+          {rank}
+        </span>
+        <span style={{ fontSize: dims.suitSize * 0.7, color, lineHeight: 1 }}>
+          {symbol}
+        </span>
+      </div>
     </div>
   );
 }
