@@ -216,13 +216,45 @@ export default function GamePage({ params }: { params: Promise<{ roomId: string 
     emitGameAction('game:acknowledgeSpecial');
   }, []);
 
+  // ── 5-Second Reveal State Before Final Standings ──
+  const [showFinalStandings, setShowFinalStandings] = useState(false);
+  const [revealCountdown, setRevealCountdown] = useState<number | null>(null);
+
+  const isGameEnding = Boolean(
+    (scores && scores.length > 0) ||
+    phase === GamePhase.GAME_OVER ||
+    phase === GamePhase.SCORING ||
+    phase === GamePhase.REVEAL
+  );
+
+  useEffect(() => {
+    if (isGameEnding && scores && scores.length > 0 && !showFinalStandings) {
+      if (revealCountdown === null) {
+        setRevealCountdown(5);
+        soundEngine.playVictory();
+      }
+      const interval = setInterval(() => {
+        setRevealCountdown((prev) => {
+          if (prev === null || prev <= 1) {
+            clearInterval(interval);
+            setShowFinalStandings(true);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+      return () => clearInterval(interval);
+    }
+  }, [isGameEnding, scores, showFinalStandings, revealCountdown]);
+
   // X-Reaction Fast Discard Handler
   const handleXReaction = useCallback((cardId: string) => {
     soundEngine.playCardFlip();
     emitGameAction('game:xReaction', { cardId });
   }, []);
 
-  if (scores && scores.length > 0 && (phase === GamePhase.GAME_OVER || phase === GamePhase.SCORING || phase === GamePhase.REVEAL)) {
+  // Show final standings only after 5 seconds on the table
+  if (showFinalStandings && scores && scores.length > 0) {
     return <ScoreScreen scores={scores} roomId={roomId} />;
   }
 
@@ -276,7 +308,13 @@ export default function GamePage({ params }: { params: Promise<{ roomId: string 
         const isSelectedOther = selectedOtherExchangeCardId === card.id;
         const isRevealingThisCard = revealedCard?.cardId === card.id;
         const isRevealedFaceUp = isRevealingThisCard && !!revealedCard?.card?.faceUp;
-        const oppCardToRender = isRevealedFaceUp
+
+        // Reveal card face-up during game ending if scores are available
+        const oppScoreObj = scores?.find((s) => s.playerId === opponentId);
+        const finalOppCard = oppScoreObj?.cards?.[idx];
+        const oppCardToRender = (isGameEnding && finalOppCard)
+          ? { ...finalOppCard, faceUp: true }
+          : isRevealedFaceUp
           ? { ...card, rank: revealedCard.card.rank, suit: revealedCard.card.suit, faceUp: true }
           : card;
 
@@ -336,7 +374,12 @@ export default function GamePage({ params }: { params: Promise<{ roomId: string 
       const isRevealedFaceUp = isRevealingThisCard && !!revealedCard?.card?.faceUp;
       const isOpponentViewingMyCard = isRevealingThisCard && !revealedCard?.card?.faceUp;
 
-      const myCardToRender = isRevealedFaceUp
+      // Reveal my cards face-up during game ending if scores are available
+      const myScoreObj = scores?.find((s) => s.playerId === myPlayerId);
+      const finalMyCard = myScoreObj?.cards?.[idx];
+      const myCardToRender = (isGameEnding && finalMyCard)
+        ? { ...finalMyCard, faceUp: true }
+        : isRevealedFaceUp
         ? { ...card, rank: revealedCard.card.rank, suit: revealedCard.card.suit, faceUp: true }
         : card;
 
@@ -568,10 +611,15 @@ export default function GamePage({ params }: { params: Promise<{ roomId: string 
               layout
             >
               {/* Opponent Header */}
-              <div className="flex items-center justify-center gap-2 mb-1.5">
+              <div className="flex items-center justify-center gap-2 mb-1.5 flex-wrap">
                 <Avatar avatarId={opponent.avatarId} size={26} />
                 <span className="text-xs md:text-sm font-bold text-slate-200 truncate max-w-[110px]">{opponent.name}</span>
-                {opponent.isActive && (
+                {isGameEnding && scores?.find((s) => s.playerId === opponent.playerId)?.score !== undefined && (
+                  <span className="text-xs font-black font-mono px-2 py-0.5 rounded-full bg-amber-400/20 text-amber-300 border border-amber-400/50 shadow-md">
+                    ⭐ {scores.find((s) => s.playerId === opponent.playerId)?.score} pts
+                  </span>
+                )}
+                {opponent.isActive && !isGameEnding && (
                   <span className="text-[9px] bg-amber-400/20 text-amber-300 font-bold px-1.5 py-0.5 rounded-full border border-amber-400/30">
                     Turn
                   </span>
@@ -926,13 +974,39 @@ export default function GamePage({ params }: { params: Promise<{ roomId: string 
         </AnimatePresence>
       </div>
 
+      {/* ── 5-Second Reveal Floating Countdown Banner ── */}
+      {isGameEnding && revealCountdown !== null && (
+        <div className="fixed top-14 md:top-18 left-1/2 -translate-x-1/2 z-50 pointer-events-none w-[90%] max-w-lg">
+          <motion.div
+            className="p-3 md:p-4 rounded-2xl bg-[#141724]/95 border-2 border-amber-400 shadow-[0_0_40px_rgba(245,158,11,0.7)] backdrop-blur-xl text-center flex items-center justify-center gap-3.5"
+            initial={{ opacity: 0, y: -20, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+          >
+            <span className="text-2xl md:text-3xl animate-bounce">🎉</span>
+            <div>
+              <p className="text-xs md:text-sm font-black uppercase tracking-wider text-amber-300">
+                ROUND OVER — REVEALING ALL HANDS & SCORES
+              </p>
+              <p className="text-[10px] md:text-xs text-slate-300 font-bold mt-0.5">
+                Switching to Final Standings in <span className="font-mono text-amber-400 font-black text-sm">{revealCountdown}s</span>...
+              </p>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
       {/* ── Player's Hand (Max 6 in Line 1, 7th alone in Line 2) ── */}
       <div ref={myHandRef} className="w-full max-w-5xl mx-auto px-4 pb-12 md:pb-14 pt-1.5 relative z-10">
-        <div className="flex items-center justify-center gap-2 mb-1.5">
+        <div className="flex items-center justify-center gap-2 mb-1.5 flex-wrap">
           <p className="text-center text-[10px] md:text-[11px] font-bold text-slate-400 uppercase tracking-widest">
             {gameState?.settings.mode === GameMode.TEAM ? '🤝 Team Hand' : 'Your Hand'} ({gameState?.myHand.filter(Boolean).length || 0} Cards)
           </p>
-          {hasDiscardCard && !showCardDecision && !isSpecialActive && !isInitialView && !penaltyPrompt && (
+          {isGameEnding && scores?.find((s) => s.playerId === myPlayerId)?.score !== undefined && (
+            <span className="text-xs md:text-sm font-black font-mono px-3 py-0.5 rounded-full bg-emerald-400/20 text-emerald-300 border border-emerald-400/50 shadow-md">
+              ⭐ Your Score: {scores.find((s) => s.playerId === myPlayerId)?.score} pts
+            </span>
+          )}
+          {hasDiscardCard && !showCardDecision && !isSpecialActive && !isInitialView && !penaltyPrompt && !isGameEnding && (
             <span className="text-[9px] md:text-[10px] text-amber-300 font-bold bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">
               ⚡ Tap card to Fast Discard
             </span>
@@ -949,56 +1023,146 @@ export default function GamePage({ params }: { params: Promise<{ roomId: string 
   );
 }
 
-// ── Score Screen Component ──────────────────────────
+// ── Full-Page Final Standings Screen with Everyone's Full Cards ──
 
 function ScoreScreen({ scores, roomId }: { scores: any[]; roomId: string }) {
   const router = useRouter();
   const sorted = [...scores].sort((a, b) => a.rank - b.rank);
 
   return (
-    <div className="min-h-dvh flex flex-col items-center justify-center p-6 bg-[#131314] text-[#e3e3e3] relative overflow-hidden">
-      <motion.div
-        className="glass-strong rounded-3xl p-8 max-w-md w-full text-center border-2 border-amber-400 shadow-[0_0_40px_rgba(245,158,11,0.3)] bg-[#1e1f20]/95"
-        initial={{ opacity: 0, scale: 0.85 }}
-        animate={{ opacity: 1, scale: 1 }}
-      >
-        <span className="text-4xl mb-2 block">🏆</span>
-        <h1 className="text-2xl font-black text-amber-400 tracking-wider mb-1">GAME OVER</h1>
-        <p className="text-xs text-slate-400 mb-6 uppercase tracking-widest font-bold">Final Standings</p>
+    <div className="min-h-dvh flex flex-col justify-between p-4 sm:p-6 md:p-8 bg-[#0c0e17] text-slate-100 relative overflow-hidden select-none">
+      {/* Ambient background glows */}
+      <div className="absolute inset-0 bg-radial from-[#151726]/60 via-[#0c0e17]/85 to-[#07080f] opacity-95 pointer-events-none z-0" />
+      <div className="absolute top-10 left-1/2 -translate-x-1/2 w-[550px] h-[350px] rounded-full bg-amber-500/10 blur-[150px] pointer-events-none z-0" />
 
-        <div className="flex flex-col gap-3 mb-8">
-          {sorted.map((s, i) => (
-            <div
-              key={s.playerId || i}
-              className={`flex items-center justify-between p-3.5 rounded-2xl border ${
-                i === 0
-                  ? 'bg-amber-400/20 border-amber-400 text-amber-300 font-black shadow-lg'
-                  : 'bg-white/5 border-white/10 text-slate-200 font-bold'
-              }`}
-            >
-              <div className="flex items-center gap-3">
-                <span className="text-sm font-black w-6 text-center">{i === 0 ? '👑' : `#${s.rank || i + 1}`}</span>
-                <Avatar avatarId={s.avatarId} size={28} />
-                <span className="text-sm truncate max-w-[140px]">{s.playerName}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-slate-400 uppercase">Score</span>
-                <span className="text-base font-black font-mono">{s.score}</span>
-              </div>
-            </div>
-          ))}
+      <div className="relative z-10 w-full max-w-7xl mx-auto flex flex-col flex-1 pb-24">
+        {/* Header */}
+        <header className="text-center my-3 md:my-5">
+          <span className="text-4xl sm:text-5xl block mb-2">🏆</span>
+          <h1 className="font-display text-2xl sm:text-3xl md:text-4xl font-black bg-gradient-to-r from-amber-300 via-yellow-100 to-amber-500 bg-clip-text text-transparent drop-shadow-[0_2px_15px_rgba(245,158,11,0.5)]">
+            FINAL STANDINGS
+          </h1>
+          <p className="text-xs text-slate-400 uppercase tracking-widest font-bold mt-1">
+            Round Summary & Complete Card Reveal
+          </p>
+        </header>
+
+        {/* ── Full Page Grid of Players with Full Cards in Respective Positions ── */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5 sm:gap-6 flex-1 my-4">
+          {sorted.map((s, i) => {
+            const isWinner = i === 0;
+            const rankLabel =
+              i === 0
+                ? '👑 1ST PLACE'
+                : i === 1
+                ? '🥈 2ND PLACE'
+                : i === 2
+                ? '🥉 3RD PLACE'
+                : `#${s.rank || i + 1}`;
+
+            const borderTheme =
+              i === 0
+                ? 'border-2 border-amber-400 bg-[#1c1811]/95 shadow-[0_0_35px_rgba(245,158,11,0.35)]'
+                : i === 1
+                ? 'border-2 border-slate-300/60 bg-[#141724]/90 shadow-[0_0_20px_rgba(203,213,225,0.15)]'
+                : i === 2
+                ? 'border-2 border-amber-700/60 bg-[#141724]/90'
+                : 'border border-white/10 bg-[#101322]/85';
+
+            const rankBadgeBg =
+              i === 0
+                ? 'bg-amber-400 text-slate-950 font-black'
+                : i === 1
+                ? 'bg-slate-300 text-slate-950 font-black'
+                : i === 2
+                ? 'bg-amber-700 text-white font-black'
+                : 'bg-white/10 text-slate-300 font-bold';
+
+            return (
+              <motion.div
+                key={s.playerId || i}
+                className={`rounded-3xl p-4 sm:p-5 flex flex-col justify-between backdrop-blur-2xl transition-all ${borderTheme}`}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.1 }}
+              >
+                <div>
+                  {/* Top Bar: Rank Badge + Score Pill */}
+                  <div className="flex items-center justify-between gap-2 mb-3">
+                    <span className={`text-[11px] px-3 py-1 rounded-full uppercase tracking-wider ${rankBadgeBg}`}>
+                      {rankLabel}
+                    </span>
+
+                    <span className="text-xs sm:text-sm font-black font-mono px-3 py-1 rounded-full bg-amber-400/20 text-amber-300 border border-amber-400/40">
+                      {s.score} pts
+                    </span>
+                  </div>
+
+                  {/* Player Profile Info */}
+                  <div className="flex items-center gap-3 mb-4 pb-3 border-b border-white/10">
+                    <Avatar avatarId={s.avatarId} size={42} />
+                    <div className="overflow-hidden">
+                      <h3 className="font-black text-sm sm:text-base text-white truncate">
+                        {s.playerName}
+                      </h3>
+                      <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
+                        {s.teamName && (
+                          <span className="text-[10px] font-bold text-purple-300 bg-purple-500/20 px-2 py-0.5 rounded-full">
+                            {s.teamName}
+                          </span>
+                        )}
+                        {s.calledPandu && (
+                          <span className="text-[10px] font-black text-amber-300 bg-amber-500/20 px-2 py-0.5 rounded-full border border-amber-400/30">
+                            👑 Called PANDU
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Player's Full Cards Shown Face-Up in Position */}
+                  <div className="space-y-1.5">
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                      Final Cards ({s.cards?.length || 0})
+                    </p>
+
+                    <div className="flex flex-wrap gap-2 justify-center py-2 bg-black/20 rounded-2xl border border-white/5 p-2">
+                      {s.cards && s.cards.length > 0 ? (
+                        s.cards.map((c: any, cIdx: number) => (
+                          <div key={c?.id || cIdx} className="hover:scale-105 transition-transform">
+                            <Card
+                              card={{ ...c, faceUp: true }}
+                              size="sm"
+                              index={cIdx}
+                            />
+                          </div>
+                        ))
+                      ) : (
+                        <span className="text-xs text-slate-500 italic py-3">No cards (0 pts)</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            );
+          })}
         </div>
+      </div>
 
-        <button
-          onClick={() => {
-            soundEngine.playCardFlip();
-            router.push(`/room/${roomId}`);
-          }}
-          className="btn-primary w-full py-4 rounded-2xl text-sm font-black tracking-wider cursor-pointer shadow-xl"
-        >
-          RETURN TO LOBBY
-        </button>
-      </motion.div>
+      {/* ── Fixed Bottom Return to Lobby Action ── */}
+      <footer className="fixed bottom-6 left-0 right-0 px-4 z-30 pointer-events-auto">
+        <div className="max-w-md mx-auto w-full bg-[#101322]/95 backdrop-blur-2xl p-2.5 rounded-3xl border-2 border-purple-500/30 shadow-[0_10px_40px_rgba(0,0,0,0.8)]">
+          <button
+            onClick={() => {
+              soundEngine.playCardFlip();
+              router.push(`/room/${roomId}`);
+            }}
+            className="btn-primary w-full py-4 rounded-2xl text-sm sm:text-base font-black tracking-wider uppercase cursor-pointer shadow-xl"
+          >
+            🔄 RETURN TO LOBBY
+          </button>
+        </div>
+      </footer>
     </div>
   );
 }
