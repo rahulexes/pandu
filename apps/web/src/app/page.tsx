@@ -175,14 +175,14 @@ export default function HomePage() {
 
       {/* ── Main Responsive Container ── */}
       {/* Desktop (md:): Left Half = Logo + Big Profile, Right Half = Centered Create/Join Buttons */}
-      {/* Mobile (<md:): Upper Half = Logo + Big Profile, Lower Half = Centered Create/Join Buttons */}
-      <div className="relative z-10 flex-1 flex flex-col md:grid md:grid-cols-2 md:items-center md:gap-12 max-w-6xl mx-auto w-full my-auto py-4">
+      {/* Mobile (<md:): Upper Half = Logo + Big Profile, Lower Half = Dead-Centered Create/Join Buttons */}
+      <div className="relative z-10 flex-1 flex flex-col justify-center md:grid md:grid-cols-2 md:items-center md:gap-12 max-w-6xl mx-auto w-full my-auto py-2 sm:py-4">
         
         {/* ── LEFT HALF (Desktop) / UPPER HALF (Mobile) ── */}
-        <div className="flex flex-col items-center justify-center text-center space-y-4 md:space-y-6">
+        <div className="flex flex-col items-center justify-center text-center space-y-3 sm:space-y-4 md:space-y-6 pt-2 pb-4 md:py-0">
           {/* Jewel Crown Icon */}
           <motion.div
-            className="text-6xl sm:text-7xl md:text-8xl mb-0 filter drop-shadow-[0_4px_20px_rgba(251,191,36,0.5)] select-none pointer-events-none"
+            className="text-5xl sm:text-7xl md:text-8xl mb-0 filter drop-shadow-[0_4px_20px_rgba(251,191,36,0.5)] select-none pointer-events-none"
             animate={{ y: [0, -6, 0] }}
             transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
           >
@@ -191,18 +191,18 @@ export default function HomePage() {
 
           {/* PANDU Gradient Title (No Gemini logos on either side) */}
           <div className="flex items-center justify-center">
-            <h1 className="font-display text-6xl sm:text-7xl md:text-8xl font-black tracking-wider bg-gradient-to-r from-[#38bdf8] via-[#c084fc] to-[#f472b6] bg-clip-text text-transparent drop-shadow-[0_4px_35px_rgba(192,132,252,0.5)]">
+            <h1 className="font-display text-5xl sm:text-7xl md:text-8xl font-black tracking-wider bg-gradient-to-r from-[#38bdf8] via-[#c084fc] to-[#f472b6] bg-clip-text text-transparent drop-shadow-[0_4px_35px_rgba(192,132,252,0.5)]">
               PANDU
             </h1>
           </div>
 
-          <p className="text-slate-400 text-xs sm:text-sm md:text-base font-black tracking-[0.35em] uppercase pointer-events-none">
+          <p className="text-slate-400 text-[11px] sm:text-sm md:text-base font-black tracking-[0.35em] uppercase pointer-events-none">
             Multiplayer Card Game
           </p>
 
           {/* ── Big Interactive Profile (2x Size & Big Name Font) ── */}
           <motion.div
-            className="mt-2 group flex items-center gap-4 md:gap-5 bg-[#131722]/90 hover:bg-[#1a2030] backdrop-blur-2xl p-3 sm:p-4 pr-6 sm:pr-8 rounded-3xl border-2 border-purple-500/30 hover:border-purple-400/60 shadow-2xl shadow-purple-500/20 transition-all cursor-pointer pointer-events-auto"
+            className="mt-1 sm:mt-2 group flex items-center gap-3.5 sm:gap-4 md:gap-5 bg-[#131722]/90 hover:bg-[#1a2030] backdrop-blur-2xl p-3 sm:p-4 pr-5 sm:pr-8 rounded-3xl border-2 border-purple-500/30 hover:border-purple-400/60 shadow-2xl shadow-purple-500/20 transition-all cursor-pointer pointer-events-auto"
             onClick={() => {
               soundEngine.playCardFlip();
               setShowProfileModal(true);
@@ -211,18 +211,18 @@ export default function HomePage() {
             whileTap={{ scale: 0.97 }}
             title="Click to change your avatar & name"
           >
-            {/* 2x Size Avatar (w-20 h-20 / 72px) */}
-            <div className="w-18 h-18 sm:w-20 sm:h-20 md:w-22 md:h-22 rounded-full bg-gradient-to-tr from-purple-600 via-pink-500 to-amber-400 flex items-center justify-center p-1 shadow-xl shadow-purple-500/40 group-hover:rotate-6 transition-transform">
-              <Avatar avatarId={avatarId} size={70} />
+            {/* 2x Size Avatar (w-18 h-18 / 68px) */}
+            <div className="w-16 h-16 sm:w-20 sm:h-20 md:w-22 md:h-22 rounded-full bg-gradient-to-tr from-purple-600 via-pink-500 to-amber-400 flex items-center justify-center p-1 shadow-xl shadow-purple-500/40 group-hover:rotate-6 transition-transform">
+              <Avatar avatarId={avatarId} size={66} />
             </div>
 
             {/* Big Name & Edit Prompt */}
             <div className="text-left">
-              <p className="text-lg sm:text-xl md:text-2xl font-black text-white truncate max-w-[170px] sm:max-w-[220px] leading-tight tracking-wide group-hover:text-amber-300 transition-colors">
+              <p className="text-base sm:text-xl md:text-2xl font-black text-white truncate max-w-[160px] sm:max-w-[220px] leading-tight tracking-wide group-hover:text-amber-300 transition-colors">
                 {name || 'Player'}
               </p>
-              <div className="flex items-center gap-1.5 mt-1">
-                <span className="text-[11px] sm:text-xs text-[#c084fc] font-black uppercase tracking-wider">
+              <div className="flex items-center gap-1 mt-0.5 sm:mt-1">
+                <span className="text-[10px] sm:text-xs text-[#c084fc] font-black uppercase tracking-wider">
                   ✏️ Edit Profile
                 </span>
               </div>
@@ -230,8 +230,8 @@ export default function HomePage() {
           </motion.div>
         </div>
 
-        {/* ── RIGHT HALF (Desktop) / LOWER HALF (Mobile) ── */}
-        <div className="flex flex-col items-center justify-center w-full max-w-md mx-auto mt-6 md:mt-0 pointer-events-auto">
+        {/* ── RIGHT HALF (Desktop) / LOWER HALF (Mobile) — DEAD CENTERED ── */}
+        <div className="flex-1 md:flex-none flex flex-col items-center justify-center w-full max-w-sm sm:max-w-md mx-auto my-auto py-4 md:py-0 pointer-events-auto">
           <AnimatePresence mode="wait">
             {mode === 'home' && (
               <motion.div
@@ -239,11 +239,11 @@ export default function HomePage() {
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.95 }}
-                className="w-full space-y-4 sm:space-y-5"
+                className="w-full space-y-4 sm:space-y-5 my-auto"
               >
                 {/* Primary Gradient Pill: CREATE PRIVATE ROOM */}
                 <button
-                  className="w-full py-5 sm:py-6 px-8 rounded-3xl font-black text-base sm:text-lg md:text-xl tracking-wider text-white bg-gradient-to-r from-[#0ea5e9] via-[#a855f7] to-[#f43f5e] shadow-2xl shadow-purple-500/40 hover:shadow-purple-500/60 hover:brightness-110 active:scale-[0.98] transition-all cursor-pointer flex items-center justify-center gap-3 border-2 border-white/20"
+                  className="w-full py-4.5 sm:py-6 px-6 sm:px-8 rounded-3xl font-black text-base sm:text-lg md:text-xl tracking-wider text-white bg-gradient-to-r from-[#0ea5e9] via-[#a855f7] to-[#f43f5e] shadow-2xl shadow-purple-500/40 hover:shadow-purple-500/60 hover:brightness-110 active:scale-[0.98] transition-all cursor-pointer flex items-center justify-center gap-3 border-2 border-white/20"
                   onClick={handleCreateRoom}
                   disabled={loading}
                 >
@@ -253,7 +253,7 @@ export default function HomePage() {
 
                 {/* Secondary Translucent Pill: JOIN WITH CODE */}
                 <button
-                  className="w-full py-5 sm:py-6 px-8 rounded-3xl font-black text-base sm:text-lg md:text-xl tracking-wider text-slate-100 bg-[#131722]/90 hover:bg-[#1d2436] border-2 border-white/15 hover:border-purple-400/40 shadow-xl shadow-black/50 active:scale-[0.98] transition-all cursor-pointer flex items-center justify-center gap-3 backdrop-blur-xl"
+                  className="w-full py-4.5 sm:py-6 px-6 sm:px-8 rounded-3xl font-black text-base sm:text-lg md:text-xl tracking-wider text-slate-100 bg-[#131722]/90 hover:bg-[#1d2436] border-2 border-white/15 hover:border-purple-400/40 shadow-xl shadow-black/50 active:scale-[0.98] transition-all cursor-pointer flex items-center justify-center gap-3 backdrop-blur-xl"
                   onClick={() => {
                     soundEngine.playCardFlip();
                     setMode('join');
