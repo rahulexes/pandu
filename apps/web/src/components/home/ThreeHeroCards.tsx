@@ -227,7 +227,9 @@ export function ThreeHeroCards() {
     const cardMeshes: { mesh: THREE.Mesh; def: CardDef }[] = [];
 
     CARD_DATA.forEach((def) => {
-      const tex = def.isBack ? backTex : createCardTexture(def.rank, def.suit);
+      const tex = def.isBack
+        ? backTex
+        : textureLoader.load(`/cards/fronts/${def.suit}_${def.rank}.png`);
       const material = new THREE.MeshStandardMaterial({
         map: tex,
         roughness: 0.3,
