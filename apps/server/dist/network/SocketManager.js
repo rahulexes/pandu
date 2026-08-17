@@ -332,7 +332,7 @@ export class SocketManager {
                 const ctx = this.getPlayerContext(socket);
                 if (!ctx)
                     return;
-                const result = ctx.room.placePenaltyCard(ctx.playerId, data.position, data.slotIndex);
+                const result = ctx.room.placePenaltyCard(ctx.playerId, data?.slotIndex);
                 if (result.error) {
                     socket.emit('game:actionError', { message: result.error, action: 'placePenaltyCard' });
                 }

@@ -109,7 +109,7 @@ export declare class Room {
         error?: string;
     };
     private dealPenaltyCard;
-    placePenaltyCard(playerId: string, position?: 'LEFT' | 'RIGHT' | 'TOP_LEFT' | 'TOP_RIGHT' | 'BOTTOM_LEFT' | 'BOTTOM_RIGHT', slotIndex?: number): {
+    placePenaltyCard(playerId: string, slotIndex?: number): {
         error?: string;
     };
     callPandu(playerId: string): {

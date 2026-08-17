@@ -58,7 +58,6 @@ export interface ClientToServerEvents {
         cardId: string;
     }) => void;
     'game:placePenaltyCard': (data: {
-        position?: 'LEFT' | 'RIGHT' | 'TOP_LEFT' | 'TOP_RIGHT' | 'BOTTOM_LEFT' | 'BOTTOM_RIGHT';
         slotIndex?: number;
     }) => void;
     'game:rematch': () => void;

@@ -50,7 +50,7 @@ export interface ClientToServerEvents {
 
   // ── X Reaction ──
   'game:xReaction': (data: { cardId: string }) => void;
-  'game:placePenaltyCard': (data: { position?: 'LEFT' | 'RIGHT' | 'TOP_LEFT' | 'TOP_RIGHT' | 'BOTTOM_LEFT' | 'BOTTOM_RIGHT'; slotIndex?: number }) => void;
+  'game:placePenaltyCard': (data: { slotIndex?: number }) => void;
 
   // ── Rematch ──
   'game:rematch': () => void;

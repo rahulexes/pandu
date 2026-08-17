@@ -41,37 +41,42 @@ export function CardFlightAnimationOverlay({
             faceUp: false,
           };
 
-          const arc = flight.arcHeight ?? 45;
-          const midX = (flight.startX + flight.endX) / 2;
-          const midY = Math.min(flight.startY, flight.endY) - arc;
+          const startX = Number.isFinite(flight.startX) ? flight.startX : window.innerWidth / 2;
+          const startY = Number.isFinite(flight.startY) ? flight.startY : window.innerHeight / 2;
+          const endX = Number.isFinite(flight.endX) ? flight.endX : window.innerWidth / 2;
+          const endY = Number.isFinite(flight.endY) ? flight.endY : window.innerHeight / 2;
+
+          const arc = flight.arcHeight ?? 40;
+          const midX = (startX + endX) / 2;
+          const midY = Math.min(startY, endY) - arc;
 
           return (
             <motion.div
               key={flight.id}
-              className="absolute top-0 left-0"
+              className="fixed top-0 left-0 pointer-events-none"
               initial={{
-                x: flight.startX,
-                y: flight.startY,
+                x: startX,
+                y: startY,
                 scale: flight.scaleStart ?? 1,
                 rotate: flight.rotateStart ?? 0,
                 opacity: 1,
               }}
               animate={{
-                x: [flight.startX, midX, flight.endX],
-                y: [flight.startY, midY, flight.endY],
-                scale: [flight.scaleStart ?? 1, 1.12, flight.scaleEnd ?? 1],
-                rotate: [flight.rotateStart ?? 0, (flight.rotateStart ?? 0) * 0.3, flight.rotateEnd ?? 0],
+                x: [startX, midX, endX],
+                y: [startY, midY, endY],
+                scale: [flight.scaleStart ?? 1, 1.1, flight.scaleEnd ?? 1],
+                rotate: [flight.rotateStart ?? 0, (flight.rotateStart ?? 0) * 0.4, flight.rotateEnd ?? 0],
                 opacity: 1,
               }}
               exit={{ opacity: 0, scale: 0.8 }}
               transition={{
-                duration: flight.duration ?? 0.7,
-                times: [0, 0.45, 1],
-                ease: ['easeOut', 'easeInOut'],
+                duration: flight.duration ?? 0.65,
+                times: [0, 0.5, 1],
+                ease: 'easeInOut',
               }}
               onAnimationComplete={() => onComplete(flight.id)}
             >
-              <div className="shadow-[0_20px_40px_rgba(0,0,0,0.8)] filter drop-shadow-[0_15px_25px_rgba(0,0,0,0.6)]">
+              <div className="shadow-[0_25px_50px_rgba(0,0,0,0.85)] filter drop-shadow-[0_20px_30px_rgba(0,0,0,0.7)]">
                 <Card
                   card={cardToRender}
                   size={flight.size ?? 'md'}
