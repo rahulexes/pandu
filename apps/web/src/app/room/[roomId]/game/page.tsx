@@ -33,6 +33,7 @@ export default function GamePage({ params }: { params: Promise<{ roomId: string 
   const revealedCard = useGameStore((s) => s.revealedCard);
   const penaltyPrompt = useGameStore((s) => s.penaltyPrompt);
   const xReactionWrong = useGameStore((s) => s.xReactionWrong);
+  const exchangedBanner = useGameStore((s) => s.exchangedBanner);
   const flightEvents = useGameStore((s) => s.flightEvents);
   const removeFlight = useGameStore((s) => s.removeFlight);
   const myPlayerId = useRoomStore((s) => s.myPlayerId);
@@ -40,6 +41,7 @@ export default function GamePage({ params }: { params: Promise<{ roomId: string 
   const [isMuted, setIsMuted] = useState(false);
   const [selectedOwnExchangeCardId, setSelectedOwnExchangeCardId] = useState<string | null>(null);
   const [selectedOtherExchangeCardId, setSelectedOtherExchangeCardId] = useState<string | null>(null);
+  const [selectedOtherExchangePlayerId, setSelectedOtherExchangePlayerId] = useState<string | null>(null);
   const [selectedSwapHandCardId, setSelectedSwapHandCardId] = useState<string | null>(null);
   const [swapDiscardPreview, setSwapDiscardPreview] = useState<ClientCard | null>(null);
   const [activeFlights, setActiveFlights] = useState<FlyingCardAnim[]>([]);
@@ -82,7 +84,7 @@ export default function GamePage({ params }: { params: Promise<{ roomId: string 
     return null;
   };
 
-  // Process flight animation events smoothly with precise DOM coordinates
+  // Process flight animation events strictly once (Idempotent single card glides)
   useEffect(() => {
     if (!flightEvents || flightEvents.length === 0) return;
 
@@ -115,74 +117,64 @@ export default function GamePage({ params }: { params: Promise<{ roomId: string 
             startY: defaultDeckY,
             endX: targetX,
             endY: targetY,
-            duration: 0.6,
-            rotateStart: -8,
+            duration: 0.55,
+            rotateStart: -6,
             rotateEnd: 0,
-            arcHeight: 45,
+            arcHeight: 35,
           },
         ]);
-      } else if (ev.type === 'discard' || ev.type === 'replace') {
-        const cardId = ev.data.cardId || ev.data.oldCardId || ev.data.discardedCard?.id;
+      } else if (ev.type === 'discard') {
+        // If drawn card was discarded: glides from draw deck/action center to discard pile
+        // If X-reaction fast-discarded: glides from hand slot to discard pile
+        const cardId = ev.data.cardId || ev.data.card?.id;
         const sourceSlotRect = cardId ? getCardRect(`my-card-slot-${cardId}`) : null;
 
-        const fromX = sourceSlotRect?.left ?? (ev.data.playerId === myPlayerId
-          ? (handRect?.left ?? window.innerWidth / 2 - 36)
-          : window.innerWidth / 2 - 36);
-        const fromY = sourceSlotRect?.top ?? (ev.data.playerId === myPlayerId
-          ? (handRect?.top ?? window.innerHeight - 140)
-          : 60);
+        const fromX = sourceSlotRect
+          ? sourceSlotRect.left
+          : (actionRect?.left ?? defaultDeckX);
+        const fromY = sourceSlotRect
+          ? sourceSlotRect.top
+          : (actionRect?.top ?? defaultDeckY);
 
         setActiveFlights((prev) => [
           ...prev,
           {
             id: ev.id,
-            card: ev.data.card || ev.data.discardedCard,
+            card: ev.data.card,
+            startX: fromX,
+            startY: fromY,
+            endX: defaultDiscardX,
+            endY: defaultDiscardY,
+            duration: 0.6,
+            rotateStart: 4,
+            rotateEnd: -4,
+            arcHeight: 45,
+            highlighted: true,
+          },
+        ]);
+      } else if (ev.type === 'replace') {
+        // Replaced hand card glides from its exact slot in hand to the discard deck
+        const oldCardId = ev.data.oldCardId || ev.data.discardedCard?.id;
+        const sourceSlotRect = oldCardId ? getCardRect(`my-card-slot-${oldCardId}`) : null;
+
+        const fromX = sourceSlotRect?.left ?? (handRect?.left ?? window.innerWidth / 2 - 36);
+        const fromY = sourceSlotRect?.top ?? (handRect?.top ?? window.innerHeight - 140);
+
+        setActiveFlights((prev) => [
+          ...prev,
+          {
+            id: ev.id,
+            card: ev.data.discardedCard,
             startX: fromX,
             startY: fromY,
             endX: defaultDiscardX,
             endY: defaultDiscardY,
             duration: 0.65,
-            rotateStart: 4,
-            rotateEnd: -4,
+            scaleStart: 1,
+            scaleEnd: 1,
+            rotateStart: 2,
+            rotateEnd: -3,
             arcHeight: 50,
-            highlighted: true,
-          },
-        ]);
-      } else if (ev.type === 'exchange') {
-        const ownCardId = ev.data.ownCardId;
-        const otherCardId = ev.data.otherCardId;
-        const otherPlayerId = ev.data.otherPlayerId;
-
-        const ownRect = ownCardId ? getCardRect(`my-card-slot-${ownCardId}`) : null;
-        const otherRect = (otherPlayerId && otherCardId)
-          ? getCardRect(`opp-card-slot-${otherPlayerId}-${otherCardId}`)
-          : null;
-
-        const startOwnX = ownRect?.left ?? (window.innerWidth / 2 - 36);
-        const startOwnY = ownRect?.top ?? (window.innerHeight - 140);
-        const startOtherX = otherRect?.left ?? (window.innerWidth / 2 - 36);
-        const startOtherY = otherRect?.top ?? 70;
-
-        setActiveFlights((prev) => [
-          ...prev,
-          {
-            id: `${ev.id}_own`,
-            startX: startOwnX,
-            startY: startOwnY,
-            endX: startOtherX,
-            endY: startOtherY,
-            duration: 0.75,
-            arcHeight: 60,
-            highlighted: true,
-          },
-          {
-            id: `${ev.id}_other`,
-            startX: startOtherX,
-            startY: startOtherY,
-            endX: startOwnX,
-            endY: startOwnY,
-            duration: 0.75,
-            arcHeight: 60,
             highlighted: true,
           },
         ]);
@@ -257,7 +249,7 @@ export default function GamePage({ params }: { params: Promise<{ roomId: string 
           startY: floatingRect.top,
           endX: slotRect.left,
           endY: slotRect.top,
-          duration: 0.6,
+          duration: 0.55,
           arcHeight: 25,
           highlighted: true,
         },
@@ -272,6 +264,7 @@ export default function GamePage({ params }: { params: Promise<{ roomId: string 
     soundEngine.playCardFlip();
     setSelectedOwnExchangeCardId(null);
     setSelectedOtherExchangeCardId(null);
+    setSelectedOtherExchangePlayerId(null);
     setSelectedSwapHandCardId(null);
     emitGameAction('game:endTurn');
   }, []);
@@ -296,16 +289,39 @@ export default function GamePage({ params }: { params: Promise<{ roomId: string 
     emitGameAction('game:selectOtherPeekCard', { targetPlayerId, cardId });
   }, []);
 
+  // Queen Step 1: Select Own Card
   const handleExchangeOwnSelect = useCallback((cardId: string) => {
     soundEngine.playCardFlip();
     setSelectedOwnExchangeCardId(cardId);
     emitGameAction('game:selectOwnExchangeCard', { cardId });
   }, []);
 
+  // Queen Step 2: Select Other Card (Floats both, asks confirmation)
   const handleExchangeOtherSelect = useCallback((targetPlayerId: string, cardId: string) => {
     soundEngine.playCardFlip();
     setSelectedOtherExchangeCardId(cardId);
-    emitGameAction('game:selectOtherExchangeCard', { targetPlayerId, cardId });
+    setSelectedOtherExchangePlayerId(targetPlayerId);
+  }, []);
+
+  // Queen Step 3: Confirm Exchange
+  const handleConfirmQueenExchange = useCallback(() => {
+    if (!selectedOtherExchangePlayerId || !selectedOtherExchangeCardId) return;
+    soundEngine.playCardFlip();
+    emitGameAction('game:selectOtherExchangeCard', {
+      targetPlayerId: selectedOtherExchangePlayerId,
+      cardId: selectedOtherExchangeCardId,
+    });
+    setSelectedOwnExchangeCardId(null);
+    setSelectedOtherExchangeCardId(null);
+    setSelectedOtherExchangePlayerId(null);
+  }, [selectedOtherExchangePlayerId, selectedOtherExchangeCardId]);
+
+  // Queen Cancel Selection
+  const handleCancelQueenSelection = useCallback(() => {
+    soundEngine.playCardFlip();
+    setSelectedOwnExchangeCardId(null);
+    setSelectedOtherExchangeCardId(null);
+    setSelectedOtherExchangePlayerId(null);
   }, []);
 
   const handleSkipSpecial = useCallback(() => {
@@ -313,6 +329,7 @@ export default function GamePage({ params }: { params: Promise<{ roomId: string 
     useGameStore.getState().setRevealedCard(null);
     setSelectedOwnExchangeCardId(null);
     setSelectedOtherExchangeCardId(null);
+    setSelectedOtherExchangePlayerId(null);
     emitGameAction('game:skipSpecial');
   }, []);
 
@@ -321,10 +338,11 @@ export default function GamePage({ params }: { params: Promise<{ roomId: string 
     useGameStore.getState().setRevealedCard(null);
     setSelectedOwnExchangeCardId(null);
     setSelectedOtherExchangeCardId(null);
+    setSelectedOtherExchangePlayerId(null);
     emitGameAction('game:acknowledgeSpecial');
   }, []);
 
-  // X-Reaction Fast Discard Handler (Server handles event broadcast cleanly)
+  // X-Reaction Fast Discard Handler
   const handleXReaction = useCallback((cardId: string) => {
     soundEngine.playCardFlip();
     emitGameAction('game:xReaction', { cardId });
@@ -337,7 +355,7 @@ export default function GamePage({ params }: { params: Promise<{ roomId: string 
   // Find the selected swap card in hand
   const selectedSwapCard = gameState?.myHand.find(c => c && c.id === selectedSwapHandCardId);
 
-  // Helper to split hand array: MAX 6 cards in Line 1, 7th card alone in Line 2
+  // Helper to split hand array: MAX 6 cards in Line 1, 7th card onwards alone in Line 2
   const renderHandGrid = (cards: (ClientCard | null)[], isOpponent = false, opponentId?: string) => {
     const topRow = cards.slice(0, 6);
     const bottomRow = cards.slice(6);
@@ -394,8 +412,10 @@ export default function GamePage({ params }: { params: Promise<{ roomId: string 
             key={card.id || idx}
             id={`opp-card-slot-${opponentId}-${card.id}`}
             className={`transition-all duration-300 transform ${
-              isSelectedOther || isRevealedFaceUp
-                ? '-translate-y-4 scale-110 ring-4 ring-emerald-400 rounded-lg shadow-[0_15px_30px_rgba(52,211,153,0.6)] z-30'
+              isSelectedOther
+                ? '-translate-y-5 scale-110 ring-4 ring-emerald-400 rounded-lg shadow-[0_20px_35px_rgba(52,211,153,0.7)] z-30 animate-bounce'
+                : isRevealedFaceUp
+                ? '-translate-y-4 scale-105 ring-4 ring-emerald-400 rounded-lg shadow-xl z-20'
                 : isClickable
                 ? 'hover:scale-110 hover:-translate-y-2 cursor-pointer ring-2 ring-emerald-400/80 rounded-lg shadow-lg animate-pulse'
                 : ''
@@ -440,8 +460,10 @@ export default function GamePage({ params }: { params: Promise<{ roomId: string 
           key={card.id || idx}
           id={`my-card-slot-${card.id}`}
           className={`transition-all duration-300 transform ${
-            isSelectedForExchange || isRevealedFaceUp
-              ? '-translate-y-4 scale-110 ring-4 ring-amber-400 rounded-xl shadow-[0_20px_35px_rgba(245,158,11,0.6)] z-30'
+            isSelectedForExchange
+              ? '-translate-y-5 scale-110 ring-4 ring-amber-400 rounded-xl shadow-[0_20px_35px_rgba(245,158,11,0.7)] z-30 animate-bounce'
+              : isRevealedFaceUp
+              ? '-translate-y-4 scale-105 ring-4 ring-amber-400 rounded-xl shadow-xl z-20'
               : isSelectedForSwap
               ? '-translate-y-3 scale-105 ring-4 ring-emerald-400 rounded-xl shadow-xl z-20'
               : 'hover:-translate-y-1.5 cursor-pointer'
@@ -464,6 +486,8 @@ export default function GamePage({ params }: { params: Promise<{ roomId: string 
                 handleExchangeOwnSelect(card.id);
               } else if (selectedOwnExchangeCardId === card.id) {
                 setSelectedOwnExchangeCardId(null);
+                setSelectedOtherExchangeCardId(null);
+                setSelectedOtherExchangePlayerId(null);
               }
               return;
             }
@@ -528,6 +552,25 @@ export default function GamePage({ params }: { params: Promise<{ roomId: string 
     <div className="game-table min-h-dvh flex flex-col justify-between select-none relative overflow-hidden bg-[#131314] text-[#e3e3e3]">
       {/* Floating Card Flight Animation Overlay */}
       <CardFlightAnimationOverlay flights={activeFlights} onComplete={handleFlightComplete} />
+
+      {/* ── 1.2s Center "EXCHANGED" Pop-up ── */}
+      <AnimatePresence>
+        {exchangedBanner && (
+          <motion.div
+            className="fixed inset-0 z-50 pointer-events-none flex items-center justify-center"
+            initial={{ opacity: 0, scale: 0.6 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.7 }}
+            transition={{ duration: 0.3 }}
+          >
+            <div className="bg-gradient-to-r from-amber-500 via-emerald-500 to-amber-500 text-slate-950 px-8 py-4 rounded-3xl shadow-[0_0_50px_rgba(245,158,11,0.8)] border-2 border-white/80 font-black text-xl md:text-2xl tracking-widest flex items-center gap-3">
+              <span>👑</span>
+              <span>EXCHANGED</span>
+              <span>👑</span>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Top Floating Error */}
       <AnimatePresence>
@@ -890,7 +933,7 @@ export default function GamePage({ params }: { params: Promise<{ roomId: string 
           )}
         </AnimatePresence>
 
-        {/* ── Special Action Prompts & Queen Exchange Steps ── */}
+        {/* ── Special Action Prompts & Queen Exchange Confirmation ── */}
         <AnimatePresence>
           {specialAction && (
             <motion.div
@@ -917,18 +960,41 @@ export default function GamePage({ params }: { params: Promise<{ roomId: string 
                 </p>
               )}
 
-              {/* Queen Exchange Step 1 */}
+              {/* Queen Exchange Step 1: Select Own */}
               {isExchangeActive && !selectedOwnExchangeCardId && specialAction.phase !== SpecialActionPhase.COMPLETE && (
                 <p className="text-xs md:text-sm text-amber-300 font-black animate-pulse">
                   👑 Step 1: Tap one of YOUR cards below to float it.
                 </p>
               )}
 
-              {/* Queen Exchange Step 2 */}
-              {isExchangeActive && selectedOwnExchangeCardId && specialAction.phase !== SpecialActionPhase.COMPLETE && (
+              {/* Queen Exchange Step 2: Select Other */}
+              {isExchangeActive && selectedOwnExchangeCardId && !selectedOtherExchangeCardId && specialAction.phase !== SpecialActionPhase.COMPLETE && (
                 <p className="text-xs md:text-sm text-emerald-300 font-black animate-pulse">
-                  👑 Step 2: Now tap an OPPONENT'S card above to exchange!
+                  👑 Step 2: Now tap an OPPONENT'S card above to select it!
                 </p>
+              )}
+
+              {/* Queen Exchange Step 3: Small Confirmation Box */}
+              {isExchangeActive && selectedOwnExchangeCardId && selectedOtherExchangeCardId && specialAction.phase !== SpecialActionPhase.COMPLETE && (
+                <div className="flex flex-col items-center gap-2 mt-1">
+                  <p className="text-xs md:text-sm text-amber-200 font-black">
+                    👑 Confirm exchange between the two floating cards?
+                  </p>
+                  <div className="flex gap-3 w-full justify-center mt-1">
+                    <button
+                      onClick={handleConfirmQueenExchange}
+                      className="flex-1 py-2.5 px-4 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs shadow-lg transition-all cursor-pointer"
+                    >
+                      ✓ CONFIRM EXCHANGE
+                    </button>
+                    <button
+                      onClick={handleCancelQueenSelection}
+                      className="flex-1 py-2.5 px-4 rounded-xl bg-rose-500 hover:bg-rose-400 text-white font-black text-xs shadow-lg transition-all cursor-pointer"
+                    >
+                      ✕ NO (CANCEL)
+                    </button>
+                  </div>
+                </div>
               )}
 
               {isExchangeActive && specialAction.phase === SpecialActionPhase.COMPLETE && (
@@ -937,7 +1003,7 @@ export default function GamePage({ params }: { params: Promise<{ roomId: string 
                 </p>
               )}
 
-              {/* Action Buttons */}
+              {/* Action Buttons (Skip / Continue) */}
               <div className="flex gap-2.5 justify-center mt-3 flex-wrap">
                 {specialAction.phase === SpecialActionPhase.COMPLETE ? (
                   <button
@@ -946,7 +1012,7 @@ export default function GamePage({ params }: { params: Promise<{ roomId: string 
                   >
                     ✓ CONTINUE
                   </button>
-                ) : (
+                ) : (!selectedOwnExchangeCardId || !selectedOtherExchangeCardId) && (
                   <button
                     className="py-2.5 px-5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-slate-200 hover:text-white text-xs font-bold transition-all cursor-pointer"
                     onClick={handleSkipSpecial}

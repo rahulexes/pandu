@@ -105,8 +105,11 @@ export function useSocket() {
       soundEngine.playCardFlip();
     });
 
-    realtimeManager.on('game:exchangeComplete', (data: any) => {
-      useGameStore.getState().triggerFlight('exchange', data);
+    realtimeManager.on('game:exchangeComplete', () => {
+      useGameStore.getState().setExchangedBanner(true);
+      setTimeout(() => {
+        useGameStore.getState().setExchangedBanner(false);
+      }, 1200);
       soundEngine.playSpecialPower();
     });
 

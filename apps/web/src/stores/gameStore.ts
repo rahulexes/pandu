@@ -92,6 +92,10 @@ interface GameState {
   drawPileCount: number;
   setDrawPileCount: (count: number) => void;
 
+  // Exchanged Pop-up
+  exchangedBanner: boolean;
+  setExchangedBanner: (show: boolean) => void;
+
   // Flight animations
   flightEvents: { id: string; type: 'draw' | 'discard' | 'replace' | 'exchange'; data: any }[];
   triggerFlight: (type: 'draw' | 'discard' | 'replace' | 'exchange', data: any) => void;
@@ -105,6 +109,9 @@ interface GameState {
 }
 
 export const useGameStore = create<GameState>((set, get) => ({
+  exchangedBanner: false,
+  setExchangedBanner: (show) => set({ exchangedBanner: show }),
+
   flightEvents: [],
   triggerFlight: (type, data) => set((state) => ({
     flightEvents: [...state.flightEvents, { id: `${type}_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`, type, data }],
