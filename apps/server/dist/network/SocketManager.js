@@ -149,13 +149,15 @@ export class SocketManager {
                 const ctx = this.getPlayerContext(socket);
                 if (!ctx)
                     return;
-                const result = ctx.room.updateSettings(ctx.playerId, data);
+                const payload = (data && data.settings) ? data.settings : data;
+                const result = ctx.room.updateSettings(ctx.playerId, payload);
                 if (result.error) {
                     socket.emit('room:error', { message: result.error });
                     return;
                 }
                 const settings = ctx.room.gameSettings;
                 this.io.to(`room:${ctx.room.code}`).emit('lobby:settingsUpdated', settings);
+                ctx.room.broadcastRoomState();
             });
             socket.on('lobby:toggleReady', () => {
                 const ctx = this.getPlayerContext(socket);

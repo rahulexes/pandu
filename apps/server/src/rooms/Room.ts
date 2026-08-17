@@ -298,8 +298,29 @@ export class Room {
     if (!isHost) return { error: 'Only the host can change settings' };
     if (this.stateMachine.currentPhase !== GamePhase.LOBBY) return { error: 'Can only change settings in lobby' };
 
-    if (updates.cardsDealt !== undefined) {
-      this.settings.cardsDealt = updates.cardsDealt;
+    const actualUpdates = ((updates as any)?.settings ? (updates as any).settings : updates) as Partial<GameSettings>;
+
+    if (actualUpdates.mode !== undefined) {
+      this.settings.mode = actualUpdates.mode;
+      if (actualUpdates.mode === GameMode.TEAM) {
+        const teamNames = ['Team A', 'Team B', 'Team C', 'Team D'];
+        this.teams.clear();
+        for (let i = 0; i < 4; i++) {
+          const teamId = `team_${String.fromCharCode(65 + i)}`;
+          this.teams.set(teamId, {
+            id: teamId,
+            name: teamNames[i],
+            playerIds: [],
+            activePlayerIndex: 0,
+          });
+        }
+      } else {
+        this.teams.clear();
+      }
+    }
+
+    if (actualUpdates.cardsDealt !== undefined) {
+      this.settings.cardsDealt = Math.max(2, Math.min(10, actualUpdates.cardsDealt));
       // Auto-adjust initialViewable if constraint violated
       const maxViewable = Math.floor(this.settings.cardsDealt / 2);
       if (this.settings.initialViewable > maxViewable) {
@@ -307,19 +328,13 @@ export class Room {
       }
     }
 
-    if (updates.initialViewable !== undefined) {
+    if (actualUpdates.initialViewable !== undefined) {
       const maxViewable = Math.floor(this.settings.cardsDealt / 2);
-      if (updates.initialViewable > maxViewable) {
-        return { error: `Initial viewable must be ≤ ${maxViewable} (floor of cards dealt / 2)` };
-      }
-      this.settings.initialViewable = updates.initialViewable;
+      this.settings.initialViewable = Math.max(0, Math.min(maxViewable, actualUpdates.initialViewable));
     }
 
-    if (updates.queenCount !== undefined) {
-      if (updates.queenCount < 2 || updates.queenCount > 4) {
-        return { error: 'Queen count must be between 2 and 4' };
-      }
-      this.settings.queenCount = updates.queenCount;
+    if (actualUpdates.queenCount !== undefined) {
+      this.settings.queenCount = Math.max(0, Math.min(8, actualUpdates.queenCount));
     }
 
     this.emitEvent('lobby:settingsUpdated', this.settings);

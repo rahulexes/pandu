@@ -107,8 +107,10 @@ export default function LobbyPage({
   const handleSetMode = (mode: GameMode) => {
     soundEngine.playCardFlip();
     updateSettingsLocal({ mode });
-    emitGameAction('lobby:updateSettings', { settings: { mode } });
+    emitGameAction('lobby:setMode', { mode });
+    emitGameAction('lobby:updateSettings', { mode });
   };
+
   // Host Action: Update Cards Dealt (+ / -)
   const handleUpdateCardsDealt = (delta: number) => {
     soundEngine.playCardFlip();
@@ -118,7 +120,7 @@ export default function LobbyPage({
     const currentPeekable = room?.settings.initialViewable ?? 2;
     const nextPeekable = Math.min(currentPeekable, maxPeekable);
     updateSettingsLocal({ cardsDealt: nextCards, initialViewable: nextPeekable });
-    emitGameAction('lobby:updateSettings', { settings: { cardsDealt: nextCards, initialViewable: nextPeekable } });
+    emitGameAction('lobby:updateSettings', { cardsDealt: nextCards, initialViewable: nextPeekable });
   };
 
   // Host Action: Update Peekable Cards (+ / -)
@@ -129,7 +131,7 @@ export default function LobbyPage({
     const currentPeekable = room?.settings.initialViewable ?? 2;
     const nextPeekable = Math.max(0, Math.min(maxPeekable, currentPeekable + delta));
     updateSettingsLocal({ initialViewable: nextPeekable });
-    emitGameAction('lobby:updateSettings', { settings: { initialViewable: nextPeekable } });
+    emitGameAction('lobby:updateSettings', { initialViewable: nextPeekable });
   };
 
   // Host Action: Update Queens Count (+ / -)
@@ -138,7 +140,7 @@ export default function LobbyPage({
     const currentQueens = room?.settings.queenCount ?? 4;
     const nextQueens = Math.max(0, Math.min(8, currentQueens + delta));
     updateSettingsLocal({ queenCount: nextQueens });
-    emitGameAction('lobby:updateSettings', { settings: { queenCount: nextQueens } });
+    emitGameAction('lobby:updateSettings', { queenCount: nextQueens });
   };
 
   // Player Action: Join Team
