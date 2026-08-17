@@ -11,7 +11,7 @@ import { useSocket, emitCreateRoom, emitJoinRoom } from '@/hooks/useSocket';
 import { useRoomStore } from '@/stores/roomStore';
 import { Avatar, AvatarPicker } from '@/components/lobby/AvatarPicker';
 import { soundEngine } from '@/lib/audio';
-import { ThreeHeroCards } from '@/components/home/ThreeHeroCards';
+import { InteractiveDeck3D } from '@/components/home/InteractiveDeck3D';
 import { QRCodeShare } from '@/components/home/QRCodeShare';
 
 const COOL_NAMES = [
@@ -151,8 +151,8 @@ export default function HomePage() {
 
   return (
     <div className="min-h-dvh flex flex-col justify-between p-4 sm:p-6 md:p-10 relative overflow-hidden bg-[#0a0d14] text-slate-100 select-none">
-      {/* Three.js 3D Fullscreen Floating Cards Background */}
-      <ThreeHeroCards />
+      {/* Interactive 3D Physics Floating Deck Background */}
+      <InteractiveDeck3D />
 
       {/* Ambient background glows */}
       <div className="absolute inset-0 bg-radial from-[#121624]/40 via-[#0a0d14]/80 to-[#07090f] opacity-90 pointer-events-none z-0" />
