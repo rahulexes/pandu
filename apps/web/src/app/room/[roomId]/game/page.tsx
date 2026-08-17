@@ -34,6 +34,7 @@ export default function GamePage({ params }: { params: Promise<{ roomId: string 
   const penaltyPrompt = useGameStore((s) => s.penaltyPrompt);
   const xReactionWrong = useGameStore((s) => s.xReactionWrong);
   const exchangedBanner = useGameStore((s) => s.exchangedBanner);
+  const blinkingExchangedCardIds = useGameStore((s) => s.blinkingExchangedCardIds);
   const flightEvents = useGameStore((s) => s.flightEvents);
   const removeFlight = useGameStore((s) => s.removeFlight);
   const myPlayerId = useRoomStore((s) => s.myPlayerId);
@@ -124,8 +125,6 @@ export default function GamePage({ params }: { params: Promise<{ roomId: string 
           },
         ]);
       } else if (ev.type === 'discard') {
-        // If drawn card was discarded: glides from draw deck/action center to discard pile
-        // If X-reaction fast-discarded: glides from hand slot to discard pile
         const cardId = ev.data.cardId || ev.data.card?.id;
         const sourceSlotRect = cardId ? getCardRect(`my-card-slot-${cardId}`) : null;
 
@@ -153,7 +152,6 @@ export default function GamePage({ params }: { params: Promise<{ roomId: string 
           },
         ]);
       } else if (ev.type === 'replace') {
-        // Replaced hand card glides from its exact slot in hand to the discard deck
         const oldCardId = ev.data.oldCardId || ev.data.discardedCard?.id;
         const sourceSlotRect = oldCardId ? getCardRect(`my-card-slot-${oldCardId}`) : null;
 
@@ -393,6 +391,8 @@ export default function GamePage({ params }: { params: Promise<{ roomId: string 
         );
       }
 
+      const isBlinkingExchanged = (blinkingExchangedCardIds?.includes(card.id)) ?? false;
+
       if (isOpponent) {
         const isTargetableForOtherPeek = isOtherPeekActive;
         const isTargetableForExchange = isExchangeActive && selectedOwnExchangeCardId !== null;
@@ -408,11 +408,23 @@ export default function GamePage({ params }: { params: Promise<{ roomId: string 
         const peekLabel = isRevealedFaceUp ? '👁️ PEEK' : '👁️ PEEK';
 
         return (
-          <div
+          <motion.div
             key={card.id || idx}
             id={`opp-card-slot-${opponentId}-${card.id}`}
+            animate={
+              isBlinkingExchanged
+                ? { opacity: [1, 0.15, 1, 0.15, 1], scale: [1, 1.15, 1, 1.15, 1] }
+                : {}
+            }
+            transition={
+              isBlinkingExchanged
+                ? { duration: 1.5, times: [0, 0.25, 0.5, 0.75, 1], ease: 'easeInOut' }
+                : {}
+            }
             className={`transition-all duration-300 transform ${
-              isSelectedOther
+              isBlinkingExchanged
+                ? 'ring-4 ring-amber-400 rounded-lg shadow-[0_0_30px_rgba(245,158,11,0.9)] z-40'
+                : isSelectedOther
                 ? '-translate-y-5 scale-110 ring-4 ring-emerald-400 rounded-lg shadow-[0_20px_35px_rgba(52,211,153,0.7)] z-30 animate-bounce'
                 : isRevealedFaceUp
                 ? '-translate-y-4 scale-105 ring-4 ring-emerald-400 rounded-lg shadow-xl z-20'
@@ -437,7 +449,7 @@ export default function GamePage({ params }: { params: Promise<{ roomId: string 
               peekLabel={peekLabel}
               peekStyle={peekStyle as any}
             />
-          </div>
+          </motion.div>
         );
       }
 
@@ -456,11 +468,23 @@ export default function GamePage({ params }: { params: Promise<{ roomId: string 
       const myPeekLabel = isOpponentViewingMyCard ? '⚠️ BEING VIEWED' : '👁️ PEEK';
 
       return (
-        <div
+        <motion.div
           key={card.id || idx}
           id={`my-card-slot-${card.id}`}
+          animate={
+            isBlinkingExchanged
+              ? { opacity: [1, 0.15, 1, 0.15, 1], scale: [1, 1.15, 1, 1.15, 1] }
+              : {}
+          }
+          transition={
+            isBlinkingExchanged
+              ? { duration: 1.5, times: [0, 0.25, 0.5, 0.75, 1], ease: 'easeInOut' }
+              : {}
+          }
           className={`transition-all duration-300 transform ${
-            isSelectedForExchange
+            isBlinkingExchanged
+              ? 'ring-4 ring-amber-400 rounded-xl shadow-[0_0_35px_rgba(245,158,11,0.9)] z-40'
+              : isSelectedForExchange
               ? '-translate-y-5 scale-110 ring-4 ring-amber-400 rounded-xl shadow-[0_20px_35px_rgba(245,158,11,0.7)] z-30 animate-bounce'
               : isRevealedFaceUp
               ? '-translate-y-4 scale-105 ring-4 ring-amber-400 rounded-xl shadow-xl z-20'
@@ -507,7 +531,7 @@ export default function GamePage({ params }: { params: Promise<{ roomId: string 
             peekLabel={myPeekLabel}
             peekStyle={myPeekStyle as any}
           />
-        </div>
+        </motion.div>
       );
     };
 

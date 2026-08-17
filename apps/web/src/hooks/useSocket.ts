@@ -105,11 +105,14 @@ export function useSocket() {
       soundEngine.playCardFlip();
     });
 
-    realtimeManager.on('game:exchangeComplete', () => {
+    realtimeManager.on('game:exchangeComplete', (data: any) => {
+      const cardIds = [data?.ownCardId, data?.otherCardId].filter(Boolean);
+      useGameStore.getState().setBlinkingExchangedCardIds(cardIds.length > 0 ? cardIds : null);
       useGameStore.getState().setExchangedBanner(true);
       setTimeout(() => {
         useGameStore.getState().setExchangedBanner(false);
-      }, 1200);
+        useGameStore.getState().setBlinkingExchangedCardIds(null);
+      }, 1500);
       soundEngine.playSpecialPower();
     });
 
