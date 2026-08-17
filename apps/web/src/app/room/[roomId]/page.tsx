@@ -34,7 +34,8 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
   const updateSettingsLocal = useRoomStore((s) => s.updateSettings);
   const phase = useGameStore((s) => s.phase);
 
-  const [copied, setCopied] = useState(false);
+  const [copiedLink, setCopiedLink] = useState(false);
+  const [copiedCode, setCopiedCode] = useState(false);
   const [showQR, setShowQR] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
 
@@ -64,8 +65,15 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
     soundEngine.playCardFlip();
     const link = `${window.location.origin}/room/${roomId}`;
     navigator.clipboard.writeText(link);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    setCopiedLink(true);
+    setTimeout(() => setCopiedLink(false), 2000);
+  };
+
+  const copyRoomCode = () => {
+    soundEngine.playCardFlip();
+    navigator.clipboard.writeText(roomId);
+    setCopiedCode(true);
+    setTimeout(() => setCopiedCode(false), 2000);
   };
 
   // Resilient Host Check
@@ -182,35 +190,58 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
         </header>
 
         {/* ── Room Code Hero Section ── */}
-        <div className="text-center my-3 relative">
-          <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-0.5">
+        <div className="text-center my-4 relative">
+          <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">
             Room Code
           </p>
 
-          <motion.div
-            className="text-5xl sm:text-6xl font-mono font-black tracking-[0.2em] text-transparent bg-clip-text bg-gradient-to-r from-[#d8b4fe] via-[#f3e8ff] to-[#c084fc] drop-shadow-[0_0_25px_rgba(192,132,252,0.65)] my-1"
-            initial={{ scale: 0.9, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
+          {/* Interactive Click-to-Copy Room Code Badge */}
+          <motion.button
+            className="group inline-flex items-center gap-3 px-6 py-2 rounded-3xl bg-[#141724]/90 hover:bg-[#1f2438] border-2 border-purple-500/30 hover:border-purple-400/60 shadow-xl shadow-purple-500/20 transition-all cursor-pointer"
+            onClick={copyRoomCode}
+            whileHover={{ scale: 1.04 }}
+            whileTap={{ scale: 0.96 }}
+            title="Click to copy Room Code"
           >
-            {roomId}
-          </motion.div>
+            <span className="text-4xl sm:text-5xl md:text-6xl font-mono font-black tracking-[0.2em] text-transparent bg-clip-text bg-gradient-to-r from-[#d8b4fe] via-[#f3e8ff] to-[#c084fc] drop-shadow-[0_0_25px_rgba(192,132,252,0.65)]">
+              {roomId}
+            </span>
+            <span className="text-lg text-purple-300 group-hover:text-amber-300 transition-colors">
+              📋
+            </span>
+          </motion.button>
 
-          {/* Action Row: Copy Link + Share QR */}
-          <div className="flex items-center justify-center gap-2.5 mt-3">
+          {/* Action Row: Copy Code + Copy Link + Share QR */}
+          <div className="flex items-center justify-center gap-2 mt-3.5 flex-wrap">
+            {/* Copy Room Code Button */}
             <button
-              className={`px-5 py-2.5 rounded-full font-bold text-xs tracking-wider uppercase transition-all duration-200 flex items-center gap-2 cursor-pointer shadow-lg border ${
-                copied
-                  ? 'bg-[#1aa260] text-white border-emerald-400'
+              className={`px-4 py-2 rounded-full font-bold text-xs tracking-wider uppercase transition-all duration-200 flex items-center gap-1.5 cursor-pointer shadow-lg border ${
+                copiedCode
+                  ? 'bg-emerald-500 text-slate-950 border-emerald-400 font-black'
+                  : 'bg-[#181c2b]/90 hover:bg-[#20263a] text-amber-300 border-amber-400/30 hover:border-amber-400/60'
+              }`}
+              onClick={copyRoomCode}
+            >
+              <span>{copiedCode ? '✓' : '📋'}</span>
+              <span>{copiedCode ? 'Code Copied!' : 'Copy Code'}</span>
+            </button>
+
+            {/* Copy Invite Link Button */}
+            <button
+              className={`px-4 py-2 rounded-full font-bold text-xs tracking-wider uppercase transition-all duration-200 flex items-center gap-1.5 cursor-pointer shadow-lg border ${
+                copiedLink
+                  ? 'bg-emerald-500 text-slate-950 border-emerald-400 font-black'
                   : 'bg-[#181c2b]/90 hover:bg-[#20263a] text-slate-200 border-white/10 hover:border-purple-400/40'
               }`}
               onClick={copyInviteLink}
             >
-              <span>📋</span>
-              <span>{copied ? 'Copied!' : 'Copy Link'}</span>
+              <span>{copiedLink ? '✓' : '🔗'}</span>
+              <span>{copiedLink ? 'Link Copied!' : 'Copy Link'}</span>
             </button>
 
+            {/* Share QR Button */}
             <button
-              className="p-2.5 px-4 rounded-full font-bold text-xs tracking-wider uppercase transition-all duration-200 flex items-center gap-1.5 cursor-pointer shadow-lg bg-[#181c2b]/90 hover:bg-[#20263a] text-slate-200 border border-white/10 hover:border-purple-400/40"
+              className="p-2 px-3.5 rounded-full font-bold text-xs tracking-wider uppercase transition-all duration-200 flex items-center gap-1.5 cursor-pointer shadow-lg bg-[#181c2b]/90 hover:bg-[#20263a] text-slate-200 border border-white/10 hover:border-purple-400/40"
               onClick={() => {
                 soundEngine.playCardFlip();
                 setShowQR(true);
@@ -218,7 +249,7 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
               title="Share Room QR Code"
             >
               <span className="text-sm">📱</span>
-              <span className="text-[11px] text-slate-300">Share QR</span>
+              <span className="text-[11px] text-slate-300">QR</span>
             </button>
           </div>
         </div>
@@ -534,9 +565,9 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
         </div>
       </div>
 
-      {/* ── Fixed Bottom Action Button ── */}
-      <footer className="fixed bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-[#0c0e17] via-[#0c0e17]/95 to-transparent z-30 pointer-events-auto">
-        <div className="max-w-md mx-auto w-full">
+      {/* ── Shifted Upwards Action Button Container ── */}
+      <footer className="fixed bottom-6 sm:bottom-8 left-0 right-0 px-4 z-30 pointer-events-auto">
+        <div className="max-w-md mx-auto w-full bg-[#101320]/95 backdrop-blur-2xl p-3 rounded-3xl border-2 border-purple-500/30 shadow-[0_10px_40px_rgba(0,0,0,0.8)]">
           {isHost ? (
             <div>
               {/* Host Status Guidance */}
@@ -557,7 +588,7 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
               )}
 
               <button
-                className={`w-full py-4.5 rounded-full font-black text-sm sm:text-base tracking-wider uppercase transition-all duration-200 cursor-pointer shadow-2xl border-2 ${
+                className={`w-full py-4 rounded-2xl font-black text-sm sm:text-base tracking-wider uppercase transition-all duration-200 cursor-pointer shadow-2xl border-2 ${
                   canStart
                     ? 'border-purple-400 bg-gradient-to-r from-[#7c3aed] to-[#c084fc] text-white hover:brightness-110 shadow-purple-500/40 animate-pulse'
                     : 'border-purple-500/40 bg-gradient-to-r from-[#581c87]/80 to-[#7e22ce]/80 text-purple-200 shadow-purple-900/30'
@@ -581,7 +612,7 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
             </div>
           ) : (
             <button
-              className={`w-full py-4.5 rounded-full font-black text-sm sm:text-base tracking-wider uppercase transition-all duration-200 cursor-pointer shadow-2xl border-2 ${
+              className={`w-full py-4 rounded-2xl font-black text-sm sm:text-base tracking-wider uppercase transition-all duration-200 cursor-pointer shadow-2xl border-2 ${
                 isMyReady
                   ? 'border-emerald-400 bg-emerald-500 text-slate-950 shadow-emerald-500/40'
                   : 'border-purple-400 bg-gradient-to-r from-[#7c3aed] to-[#c084fc] text-white shadow-purple-500/40'
