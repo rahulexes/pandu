@@ -306,15 +306,57 @@ export function InteractiveDeck3D() {
 
       raycaster.setFromCamera(mouse, camera);
 
+      // 1. Check if user clicked on any floating/settled card on screen first
+      const floatingMeshes = thrownCards.map((c) => c.mesh);
+      if (floatingMeshes.length > 0) {
+        const floatingIntersects = raycaster.intersectObjects(floatingMeshes, true);
+        if (floatingIntersects.length > 0) {
+          // Find the parent card group of the intersected mesh
+          let hitMesh = floatingIntersects[0].object as THREE.Mesh;
+          while (hitMesh.parent && hitMesh.parent !== scene && !(hitMesh.parent instanceof THREE.Scene)) {
+            hitMesh = hitMesh.parent as unknown as THREE.Mesh;
+          }
+
+          // Remove from thrownCards while dragging so physics doesn't fight the drag
+          thrownCards = thrownCards.filter((c) => c.mesh !== hitMesh);
+
+          isDragging = true;
+          draggedCard = hitMesh;
+
+          const cameraDir = new THREE.Vector3();
+          camera.getWorldDirection(cameraDir);
+          dragPlane.setFromNormalAndCoplanarPoint(cameraDir.negate(), draggedCard.position);
+
+          if (raycaster.ray.intersectPlane(dragPlane, planeIntersect)) {
+            dragOffset.copy(draggedCard.position).sub(planeIntersect);
+          }
+
+          dragHistory = [{ pos: draggedCard.position.clone(), time: performance.now() }];
+          return;
+        }
+      }
+
+      // 2. Otherwise check if user clicked on top card of the deck
       const top = getTopCard();
       if (!top) return;
 
-      const intersects = raycaster.intersectObjects([top.mesh], true);
-      if (intersects.length > 0) {
+      const deckIntersects = raycaster.intersectObjects([top.mesh], true);
+      if (deckIntersects.length > 0) {
         isDragging = true;
         draggedCard = top.mesh;
 
-        // Set up drag plane parallel to camera at card's current depth
+        // Remove from deck stack immediately so next card becomes top
+        deckMeshes = deckMeshes.filter((item) => item.mesh !== draggedCard);
+
+        // Refill deck if low
+        if (deckMeshes.length < 5) {
+          if (deckPool.length === 0) deckPool = shuffle([...DECK_CARDS]);
+          const cardData = deckPool.pop()!;
+          const newItem = buildCardMesh(cardData, 0);
+          scene.add(newItem.mesh);
+          deckMeshes.unshift(newItem); // Add at bottom of stack
+        }
+
         const cameraDir = new THREE.Vector3();
         camera.getWorldDirection(cameraDir);
         dragPlane.setFromNormalAndCoplanarPoint(cameraDir.negate(), draggedCard.position);
@@ -379,9 +421,6 @@ export function InteractiveDeck3D() {
         -velocity.x * 0.8 + (Math.random() - 0.5) * 2
       );
 
-      // Remove from deck list
-      deckMeshes = deckMeshes.filter((item) => item.mesh !== thrownMesh);
-
       // Add to physics loop
       thrownCards.push({
         mesh: thrownMesh,
@@ -392,15 +431,6 @@ export function InteractiveDeck3D() {
         floatPhase: Math.random() * Math.PI * 2,
         basePos: thrownMesh.position.clone(),
       });
-
-      // Refill deck if low
-      if (deckMeshes.length < 5) {
-        if (deckPool.length === 0) deckPool = shuffle([...DECK_CARDS]);
-        const cardData = deckPool.pop()!;
-        const newItem = buildCardMesh(cardData, 0);
-        scene.add(newItem.mesh);
-        deckMeshes.unshift(newItem); // Add at bottom of stack
-      }
     }
 
     // Event Listeners (Mouse & Touch)
