@@ -1167,7 +1167,11 @@ export class Room {
     }, 12000);
   }
 
-  placePenaltyCard(playerId: string, position: 'LEFT' | 'RIGHT'): { error?: string } {
+  placePenaltyCard(
+    playerId: string,
+    position: 'LEFT' | 'RIGHT' | 'TOP_LEFT' | 'TOP_RIGHT' | 'BOTTOM_LEFT' | 'BOTTOM_RIGHT' = 'RIGHT',
+    slotIndex?: number,
+  ): { error?: string } {
     const cardId = this.pendingPenaltyCards.get(playerId);
     if (!cardId) return { error: 'No pending penalty card' };
 
@@ -1175,13 +1179,21 @@ export class Room {
 
     const hand = this.getPlayerHand(playerId);
     if (hand) {
-      if (position === 'LEFT') {
+      if (typeof slotIndex === 'number' && slotIndex >= 0 && slotIndex < hand.length && hand[slotIndex] === null) {
+        hand[slotIndex] = cardId;
+      } else if (position === 'TOP_LEFT' || position === 'LEFT') {
         const firstEmptyIdx = hand.indexOf(null);
         if (firstEmptyIdx !== -1 && firstEmptyIdx === 0) {
           hand[0] = cardId;
         } else {
           hand.unshift(cardId);
         }
+      } else if (position === 'TOP_RIGHT') {
+        const cols = Math.max(2, Math.ceil(hand.length / 2));
+        hand.splice(cols, 0, cardId);
+      } else if (position === 'BOTTOM_LEFT') {
+        const cols = Math.max(2, Math.ceil(hand.length / 2));
+        hand.splice(cols, 0, cardId);
       } else {
         const lastEmptyIdx = hand.lastIndexOf(null);
         if (lastEmptyIdx !== -1 && lastEmptyIdx === hand.length - 1) {
@@ -1193,7 +1205,7 @@ export class Room {
       this.setPlayerHand(playerId, hand);
     }
 
-    this.logger.log(GameEventType.PENALTY_DEALT, { playerId, cardId, position });
+    this.logger.log(GameEventType.PENALTY_DEALT, { playerId, cardId, position, slotIndex });
     this.emitEvent('game:penaltyCard', { playerId, cardCount: 1 });
     this.broadcastGameState();
     return {};

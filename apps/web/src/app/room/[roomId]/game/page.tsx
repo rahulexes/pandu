@@ -50,6 +50,7 @@ export default function GamePage({ params }: { params: Promise<{ roomId: string 
   const discardPileRef = useRef<HTMLDivElement>(null);
   const actionCenterRef = useRef<HTMLDivElement>(null);
   const myHandRef = useRef<HTMLDivElement>(null);
+  const floatingPenaltyRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setIsMuted(soundEngine.getMuted());
@@ -241,11 +242,59 @@ export default function GamePage({ params }: { params: Promise<{ roomId: string 
     setSelectedSwapHandCardId(null);
   }, [selectedSwapHandCardId, gameState]);
 
-  const handleChoosePenaltyPosition = useCallback((position: 'LEFT' | 'RIGHT') => {
+  // Handle placement of penalty card directly into an empty slot
+  const handlePlacePenaltyAtSlot = useCallback((slotIndex: number) => {
     soundEngine.playCardFlip();
+    const floatingRect = floatingPenaltyRef.current?.getBoundingClientRect();
+    const slotRect = getCardRect(`my-card-slot-empty-${slotIndex}`);
+
+    if (floatingRect && slotRect) {
+      setActiveFlights((prev) => [
+        ...prev,
+        {
+          id: `penalty_placement_${Date.now()}`,
+          card: { id: penaltyPrompt?.cardId || 'penalty', faceUp: false },
+          startX: floatingRect.left,
+          startY: floatingRect.top,
+          endX: slotRect.left,
+          endY: slotRect.top,
+          duration: 0.65,
+          arcHeight: 30,
+          highlighted: true,
+        },
+      ]);
+    }
+
+    useGameStore.getState().setPenaltyPrompt(null);
+    emitGameAction('game:placePenaltyCard', { slotIndex });
+  }, [penaltyPrompt]);
+
+  // Handle placement of penalty card at 4-corner spaces (when no empty slot exists)
+  const handlePlacePenaltyAtPosition = useCallback((position: 'TOP_LEFT' | 'TOP_RIGHT' | 'BOTTOM_LEFT' | 'BOTTOM_RIGHT' | 'LEFT' | 'RIGHT') => {
+    soundEngine.playCardFlip();
+    const floatingRect = floatingPenaltyRef.current?.getBoundingClientRect();
+    const cornerRect = getCardRect(`penalty-corner-${position}`);
+
+    if (floatingRect && cornerRect) {
+      setActiveFlights((prev) => [
+        ...prev,
+        {
+          id: `penalty_placement_${Date.now()}`,
+          card: { id: penaltyPrompt?.cardId || 'penalty', faceUp: false },
+          startX: floatingRect.left,
+          startY: floatingRect.top,
+          endX: cornerRect.left,
+          endY: cornerRect.top,
+          duration: 0.65,
+          arcHeight: 30,
+          highlighted: true,
+        },
+      ]);
+    }
+
     useGameStore.getState().setPenaltyPrompt(null);
     emitGameAction('game:placePenaltyCard', { position });
-  }, []);
+  }, [penaltyPrompt]);
 
   const handleEndTurn = useCallback(() => {
     soundEngine.playCardFlip();
@@ -376,12 +425,32 @@ export default function GamePage({ params }: { params: Promise<{ roomId: string 
     const cols = Math.max(2, Math.ceil(totalSlots / 2));
     const topRow = cards.slice(0, cols);
     const bottomRow = cards.slice(cols);
+    const isPenaltyActiveForMe = !isOpponent && !!penaltyPrompt;
+    const hasEmptySlotInHand = !isOpponent && cards.some(c => c === null);
 
     const renderCardOrEmpty = (card: ClientCard | null, idx: number) => {
       const slotWidth = isOpponent ? 'w-[52px]' : 'w-[72px]';
       const slotHeight = isOpponent ? 'h-[76px]' : 'h-[104px]';
 
       if (!card) {
+        if (isPenaltyActiveForMe) {
+          // Blinking place-here slot when taking penalty!
+          return (
+            <motion.div
+              key={`empty_${idx}`}
+              id={`my-card-slot-empty-${idx}`}
+              className={`${slotWidth} ${slotHeight} rounded-xl border-2 border-dashed border-rose-400 bg-rose-500/20 flex flex-col items-center justify-center text-rose-300 text-[10px] font-black cursor-pointer hover:scale-105 hover:bg-rose-500/40 shadow-[0_0_20px_rgba(244,63,94,0.6)] animate-pulse`}
+              onClick={() => handlePlacePenaltyAtSlot(idx)}
+              whileHover={{ scale: 1.08 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              <span className="text-base">⬇️</span>
+              <span>PLACE</span>
+              <span>HERE</span>
+            </motion.div>
+          );
+        }
+
         return (
           <div
             key={`empty_${idx}`}
@@ -486,7 +555,6 @@ export default function GamePage({ params }: { params: Promise<{ roomId: string 
             }
 
             // PRIMARY GAMEPLAY ACTION: FAST DISCARD (X-RULE)
-            // Any player can tap their matching card at any time when discard pile exists!
             if (hasDiscardCard) {
               handleXReaction(card.id);
             }
@@ -510,16 +578,37 @@ export default function GamePage({ params }: { params: Promise<{ roomId: string 
       );
     };
 
+    const renderCornerSlot = (pos: 'TOP_LEFT' | 'TOP_RIGHT' | 'BOTTOM_LEFT' | 'BOTTOM_RIGHT', label: string) => {
+      return (
+        <motion.div
+          id={`penalty-corner-${pos}`}
+          className="w-[72px] h-[104px] rounded-xl border-2 border-dashed border-amber-400 bg-amber-500/20 flex flex-col items-center justify-center text-amber-300 text-[10px] font-black cursor-pointer hover:scale-105 hover:bg-amber-500/40 shadow-[0_0_20px_rgba(245,158,11,0.6)] animate-pulse"
+          onClick={() => handlePlacePenaltyAtPosition(pos)}
+          whileHover={{ scale: 1.08 }}
+          whileTap={{ scale: 0.95 }}
+        >
+          <span className="text-base">➕</span>
+          <span>{label}</span>
+        </motion.div>
+      );
+    };
+
+    const showCornerSlots = isPenaltyActiveForMe && !hasEmptySlotInHand;
+
     return (
       <div className="flex flex-col gap-2.5 items-center justify-center">
         {/* Top Row */}
         <div className="flex gap-3 justify-center items-center">
+          {showCornerSlots && renderCornerSlot('TOP_LEFT', 'Top Left')}
           {topRow.map((card, i) => renderCardOrEmpty(card, i))}
+          {showCornerSlots && renderCornerSlot('TOP_RIGHT', 'Top Right')}
         </div>
         {/* Bottom Row */}
         {bottomRow.length > 0 && (
           <div className="flex gap-3 justify-center items-center">
+            {showCornerSlots && renderCornerSlot('BOTTOM_LEFT', 'Bot Left')}
             {bottomRow.map((card, i) => renderCardOrEmpty(card, cols + i))}
+            {showCornerSlots && renderCornerSlot('BOTTOM_RIGHT', 'Bot Right')}
           </div>
         )}
       </div>
@@ -637,7 +726,7 @@ export default function GamePage({ params }: { params: Promise<{ roomId: string 
                 )}
               </div>
 
-              {/* Opponent Hand Grid (Spatially Fixed) */}
+              {/* Opponent Hand Grid */}
               <div className="min-h-[84px] py-1 flex items-center justify-center">
                 {opponent.cards && opponent.cards.length > 0 ? (
                   renderHandGrid(opponent.cards, true, opponent.playerId)
@@ -808,7 +897,7 @@ export default function GamePage({ params }: { params: Promise<{ roomId: string 
           )}
         </AnimatePresence>
 
-        {/* ── Interactive Drawn Card & Swap Action Center (BOLD & PROMINENT) ── */}
+        {/* ── Interactive Drawn Card & Swap Action Center ── */}
         <AnimatePresence mode="wait">
           {drawnCard && isMyTurn && !swapDiscardPreview && (
             <motion.div
@@ -873,35 +962,25 @@ export default function GamePage({ params }: { params: Promise<{ roomId: string 
           )}
         </AnimatePresence>
 
-        {/* ── Penalty Card Placement Prompt ── */}
+        {/* ── Floating Penalty Card Hover Zone ── */}
         <AnimatePresence>
           {penaltyPrompt && (
             <motion.div
-              className="glass-strong rounded-3xl p-6 border-2 border-rose-500 shadow-2xl max-w-md w-full my-2 text-center bg-[#1e1f20]/95"
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.8 }}
+              ref={floatingPenaltyRef}
+              className="glass-strong rounded-3xl p-5 flex flex-col items-center gap-2.5 border-2 border-rose-500 shadow-[0_0_35px_rgba(244,63,94,0.5)] my-2 max-w-sm w-full bg-[#1e1f20]/95"
+              initial={{ opacity: 0, scale: 0.8, y: -20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.8, y: 20 }}
             >
-              <p className="text-rose-400 font-black text-base tracking-wider mb-1">
-                ⚠️ PENALTY CARD DEALT!
-              </p>
-              <p className="text-sm text-slate-200 mb-5 font-bold">
-                Where would you like to place your penalty card in your hand?
-              </p>
-              <div className="flex gap-4">
-                <button
-                  className="flex-1 py-4 px-4 rounded-2xl bg-amber-500/20 hover:bg-amber-500/30 border-2 border-amber-400 text-amber-300 text-sm font-black tracking-wider transition-all cursor-pointer shadow-xl"
-                  onClick={() => handleChoosePenaltyPosition('LEFT')}
-                >
-                  ⬅️ EXTREME LEFT<br/><span className="text-xs text-amber-200 font-normal">(Position 1)</span>
-                </button>
-                <button
-                  className="flex-1 py-4 px-4 rounded-2xl bg-amber-500/20 hover:bg-amber-500/30 border-2 border-amber-400 text-amber-300 text-sm font-black tracking-wider transition-all cursor-pointer shadow-xl"
-                  onClick={() => handleChoosePenaltyPosition('RIGHT')}
-                >
-                  ➡️ EXTREME RIGHT<br/><span className="text-xs text-amber-200 font-normal">(Last Position)</span>
-                </button>
+              <span className="text-xs font-black text-rose-400 uppercase tracking-wider animate-pulse">
+                ⚠️ PENALTY CARD FLOATING
+              </span>
+              <div className="transform animate-bounce shadow-2xl">
+                <Card card={{ id: penaltyPrompt.cardId || 'penalty', faceUp: false }} size="md" highlighted />
               </div>
+              <p className="text-xs md:text-sm text-amber-200 font-black text-center">
+                👇 Click any blinking slot below to place penalty card!
+              </p>
             </motion.div>
           )}
         </AnimatePresence>
@@ -1018,7 +1097,7 @@ export default function GamePage({ params }: { params: Promise<{ roomId: string 
           <p className="text-center text-[11px] font-bold text-slate-400 uppercase tracking-widest">
             {gameState?.settings.mode === GameMode.TEAM ? '🤝 Team Hand' : 'Your Hand'} ({gameState?.myHand.filter(Boolean).length || 0} Cards)
           </p>
-          {hasDiscardCard && !showCardDecision && !isSpecialActive && !isInitialView && (
+          {hasDiscardCard && !showCardDecision && !isSpecialActive && !isInitialView && !penaltyPrompt && (
             <span className="text-[10px] text-amber-300 font-bold bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">
               ⚡ Tap card to Fast Discard (Match pile)
             </span>
