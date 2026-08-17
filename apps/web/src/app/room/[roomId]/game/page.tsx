@@ -216,9 +216,10 @@ export default function GamePage({ params }: { params: Promise<{ roomId: string 
     emitGameAction('game:acknowledgeSpecial');
   }, []);
 
-  // ── 5-Second Reveal State Before Final Standings ──
+  // ── Sequential Card-by-Card Reveal (Last Place -> 1st Place, 1 card / 0.25s) ──
   const [showFinalStandings, setShowFinalStandings] = useState(false);
-  const [revealCountdown, setRevealCountdown] = useState<number | null>(null);
+  const [revealedSlots, setRevealedSlots] = useState<Set<string>>(new Set());
+  const [currentRevealingName, setCurrentRevealingName] = useState<string | null>(null);
 
   const isGameEnding = Boolean(
     (scores && scores.length > 0) ||
@@ -228,24 +229,42 @@ export default function GamePage({ params }: { params: Promise<{ roomId: string 
   );
 
   useEffect(() => {
-    if (isGameEnding && scores && scores.length > 0 && !showFinalStandings) {
-      if (revealCountdown === null) {
-        setRevealCountdown(5);
-        soundEngine.playVictory();
+    if (!isGameEnding || !scores || scores.length === 0 || showFinalStandings) return;
+
+    // Order players from LAST position (highest rank number) to 1st position (Rank 1)
+    const reversePlayers = [...scores].sort((a, b) => b.rank - a.rank);
+    let isCancelled = false;
+    let totalDelay = 0;
+    const timeouts: NodeJS.Timeout[] = [];
+
+    reversePlayers.forEach((player) => {
+      const cardCount = player.cards?.length || 0;
+      for (let i = 0; i < cardCount; i++) {
+        const slotKey = `${player.playerId}_${i}`;
+        const t = setTimeout(() => {
+          if (isCancelled) return;
+          soundEngine.playCardFlip();
+          setCurrentRevealingName(player.playerName);
+          setRevealedSlots((prev) => new Set([...prev, slotKey]));
+        }, totalDelay);
+        timeouts.push(t);
+        totalDelay += 250; // 0.25s per card
       }
-      const interval = setInterval(() => {
-        setRevealCountdown((prev) => {
-          if (prev === null || prev <= 1) {
-            clearInterval(interval);
-            setShowFinalStandings(true);
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
-      return () => clearInterval(interval);
-    }
-  }, [isGameEnding, scores, showFinalStandings, revealCountdown]);
+    });
+
+    // After all players' cards are revealed, wait 2 seconds, then show Final Standings
+    const finalTimer = setTimeout(() => {
+      if (isCancelled) return;
+      soundEngine.playVictory();
+      setShowFinalStandings(true);
+    }, totalDelay + 2000);
+    timeouts.push(finalTimer);
+
+    return () => {
+      isCancelled = true;
+      timeouts.forEach(clearTimeout);
+    };
+  }, [isGameEnding, scores, showFinalStandings]);
 
   // X-Reaction Fast Discard Handler
   const handleXReaction = useCallback((cardId: string) => {
@@ -253,7 +272,7 @@ export default function GamePage({ params }: { params: Promise<{ roomId: string 
     emitGameAction('game:xReaction', { cardId });
   }, []);
 
-  // Show final standings only after 5 seconds on the table
+  // Show final standings only after sequential reveal on table
   if (showFinalStandings && scores && scores.length > 0) {
     return <ScoreScreen scores={scores} roomId={roomId} />;
   }
@@ -309,10 +328,12 @@ export default function GamePage({ params }: { params: Promise<{ roomId: string 
         const isRevealingThisCard = revealedCard?.cardId === card.id;
         const isRevealedFaceUp = isRevealingThisCard && !!revealedCard?.card?.faceUp;
 
-        // Reveal card face-up during game ending if scores are available
+        // Sequential reveal slot check
+        const slotKey = `${opponentId}_${idx}`;
+        const isSlotRevealed = revealedSlots.has(slotKey);
         const oppScoreObj = scores?.find((s) => s.playerId === opponentId);
         const finalOppCard = oppScoreObj?.cards?.[idx];
-        const oppCardToRender = (isGameEnding && finalOppCard)
+        const oppCardToRender = (isGameEnding && isSlotRevealed && finalOppCard)
           ? { ...finalOppCard, faceUp: true }
           : isRevealedFaceUp
           ? { ...card, rank: revealedCard.card.rank, suit: revealedCard.card.suit, faceUp: true }
@@ -374,10 +395,12 @@ export default function GamePage({ params }: { params: Promise<{ roomId: string 
       const isRevealedFaceUp = isRevealingThisCard && !!revealedCard?.card?.faceUp;
       const isOpponentViewingMyCard = isRevealingThisCard && !revealedCard?.card?.faceUp;
 
-      // Reveal my cards face-up during game ending if scores are available
+      // Sequential reveal for player's own cards
+      const mySlotKey = `${myPlayerId}_${idx}`;
+      const isMySlotRevealed = revealedSlots.has(mySlotKey);
       const myScoreObj = scores?.find((s) => s.playerId === myPlayerId);
       const finalMyCard = myScoreObj?.cards?.[idx];
-      const myCardToRender = (isGameEnding && finalMyCard)
+      const myCardToRender = (isGameEnding && isMySlotRevealed && finalMyCard)
         ? { ...finalMyCard, faceUp: true }
         : isRevealedFaceUp
         ? { ...card, rank: revealedCard.card.rank, suit: revealedCard.card.suit, faceUp: true }
@@ -614,11 +637,6 @@ export default function GamePage({ params }: { params: Promise<{ roomId: string 
               <div className="flex items-center justify-center gap-2 mb-1.5 flex-wrap">
                 <Avatar avatarId={opponent.avatarId} size={26} />
                 <span className="text-xs md:text-sm font-bold text-slate-200 truncate max-w-[110px]">{opponent.name}</span>
-                {isGameEnding && scores?.find((s) => s.playerId === opponent.playerId)?.score !== undefined && (
-                  <span className="text-xs font-black font-mono px-2 py-0.5 rounded-full bg-amber-400/20 text-amber-300 border border-amber-400/50 shadow-md">
-                    ⭐ {scores.find((s) => s.playerId === opponent.playerId)?.score} pts
-                  </span>
-                )}
                 {opponent.isActive && !isGameEnding && (
                   <span className="text-[9px] bg-amber-400/20 text-amber-300 font-bold px-1.5 py-0.5 rounded-full border border-amber-400/30">
                     Turn
@@ -974,22 +992,24 @@ export default function GamePage({ params }: { params: Promise<{ roomId: string 
         </AnimatePresence>
       </div>
 
-      {/* ── 5-Second Reveal Floating Countdown Banner ── */}
-      {isGameEnding && revealCountdown !== null && (
+      {/* ── Sequential Reveal Floating Notification Banner ── */}
+      {isGameEnding && !showFinalStandings && (
         <div className="fixed top-14 md:top-18 left-1/2 -translate-x-1/2 z-50 pointer-events-none w-[90%] max-w-lg">
           <motion.div
             className="p-3 md:p-4 rounded-2xl bg-[#141724]/95 border-2 border-amber-400 shadow-[0_0_40px_rgba(245,158,11,0.7)] backdrop-blur-xl text-center flex items-center justify-center gap-3.5"
             initial={{ opacity: 0, y: -20, scale: 0.9 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
           >
-            <span className="text-2xl md:text-3xl animate-bounce">🎉</span>
+            <span className="text-2xl md:text-3xl animate-bounce">🎴</span>
             <div>
               <p className="text-xs md:text-sm font-black uppercase tracking-wider text-amber-300">
-                ROUND OVER — REVEALING ALL HANDS & SCORES
+                REVEALING CARDS (LAST PLACE → 1ST PLACE)
               </p>
-              <p className="text-[10px] md:text-xs text-slate-300 font-bold mt-0.5">
-                Switching to Final Standings in <span className="font-mono text-amber-400 font-black text-sm">{revealCountdown}s</span>...
-              </p>
+              {currentRevealingName && (
+                <p className="text-[11px] md:text-xs text-slate-300 font-bold mt-0.5">
+                  Revealing hand of <span className="text-white font-black">{currentRevealingName}</span>...
+                </p>
+              )}
             </div>
           </motion.div>
         </div>
@@ -1001,11 +1021,6 @@ export default function GamePage({ params }: { params: Promise<{ roomId: string 
           <p className="text-center text-[10px] md:text-[11px] font-bold text-slate-400 uppercase tracking-widest">
             {gameState?.settings.mode === GameMode.TEAM ? '🤝 Team Hand' : 'Your Hand'} ({gameState?.myHand.filter(Boolean).length || 0} Cards)
           </p>
-          {isGameEnding && scores?.find((s) => s.playerId === myPlayerId)?.score !== undefined && (
-            <span className="text-xs md:text-sm font-black font-mono px-3 py-0.5 rounded-full bg-emerald-400/20 text-emerald-300 border border-emerald-400/50 shadow-md">
-              ⭐ Your Score: {scores.find((s) => s.playerId === myPlayerId)?.score} pts
-            </span>
-          )}
           {hasDiscardCard && !showCardDecision && !isSpecialActive && !isInitialView && !penaltyPrompt && !isGameEnding && (
             <span className="text-[9px] md:text-[10px] text-amber-300 font-bold bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">
               ⚡ Tap card to Fast Discard
@@ -1023,125 +1038,94 @@ export default function GamePage({ params }: { params: Promise<{ roomId: string 
   );
 }
 
-// ── Full-Page Final Standings Screen with Everyone's Full Cards ──
+// ── Clean Final Standings Screen (Name, Rank with PANDU Crown for #1, and Score) ──
 
 function ScoreScreen({ scores, roomId }: { scores: any[]; roomId: string }) {
   const router = useRouter();
   const sorted = [...scores].sort((a, b) => a.rank - b.rank);
 
   return (
-    <div className="min-h-dvh flex flex-col justify-between p-4 sm:p-6 md:p-8 bg-[#0c0e17] text-slate-100 relative overflow-hidden select-none">
+    <div className="min-h-dvh flex flex-col justify-between items-center p-4 sm:p-6 md:p-8 bg-[#0c0e17] text-slate-100 relative overflow-hidden select-none">
       {/* Ambient background glows */}
       <div className="absolute inset-0 bg-radial from-[#151726]/60 via-[#0c0e17]/85 to-[#07080f] opacity-95 pointer-events-none z-0" />
       <div className="absolute top-10 left-1/2 -translate-x-1/2 w-[550px] h-[350px] rounded-full bg-amber-500/10 blur-[150px] pointer-events-none z-0" />
 
-      <div className="relative z-10 w-full max-w-7xl mx-auto flex flex-col flex-1 pb-24">
+      <div className="relative z-10 w-full max-w-xl mx-auto flex flex-col flex-1 pb-24 justify-center">
         {/* Header */}
-        <header className="text-center my-3 md:my-5">
-          <span className="text-4xl sm:text-5xl block mb-2">🏆</span>
-          <h1 className="font-display text-2xl sm:text-3xl md:text-4xl font-black bg-gradient-to-r from-amber-300 via-yellow-100 to-amber-500 bg-clip-text text-transparent drop-shadow-[0_2px_15px_rgba(245,158,11,0.5)]">
+        <header className="text-center my-4 md:my-6">
+          <span className="text-5xl block mb-2 animate-bounce">👑</span>
+          <h1 className="font-display text-3xl sm:text-4xl font-black bg-gradient-to-r from-amber-300 via-yellow-100 to-amber-500 bg-clip-text text-transparent drop-shadow-[0_2px_15px_rgba(245,158,11,0.5)]">
             FINAL STANDINGS
           </h1>
           <p className="text-xs text-slate-400 uppercase tracking-widest font-bold mt-1">
-            Round Summary & Complete Card Reveal
+            Official Match Rankings & Scores
           </p>
         </header>
 
-        {/* ── Full Page Grid of Players with Full Cards in Respective Positions ── */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5 sm:gap-6 flex-1 my-4">
+        {/* ── Standings List (Name, Rank with PANDU Crown for 1st, and Score) ── */}
+        <div className="flex flex-col gap-3.5 w-full my-4">
           {sorted.map((s, i) => {
             const isWinner = i === 0;
-            const rankLabel =
-              i === 0
-                ? '👑 1ST PLACE'
-                : i === 1
-                ? '🥈 2ND PLACE'
-                : i === 2
-                ? '🥉 3RD PLACE'
-                : `#${s.rank || i + 1}`;
-
-            const borderTheme =
-              i === 0
-                ? 'border-2 border-amber-400 bg-[#1c1811]/95 shadow-[0_0_35px_rgba(245,158,11,0.35)]'
-                : i === 1
-                ? 'border-2 border-slate-300/60 bg-[#141724]/90 shadow-[0_0_20px_rgba(203,213,225,0.15)]'
-                : i === 2
-                ? 'border-2 border-amber-700/60 bg-[#141724]/90'
-                : 'border border-white/10 bg-[#101322]/85';
-
-            const rankBadgeBg =
-              i === 0
-                ? 'bg-amber-400 text-slate-950 font-black'
-                : i === 1
-                ? 'bg-slate-300 text-slate-950 font-black'
-                : i === 2
-                ? 'bg-amber-700 text-white font-black'
-                : 'bg-white/10 text-slate-300 font-bold';
 
             return (
               <motion.div
                 key={s.playerId || i}
-                className={`rounded-3xl p-4 sm:p-5 flex flex-col justify-between backdrop-blur-2xl transition-all ${borderTheme}`}
-                initial={{ opacity: 0, y: 20 }}
+                className={`flex items-center justify-between p-4 sm:p-5 rounded-3xl border transition-all ${
+                  isWinner
+                    ? 'border-2 border-amber-400 bg-gradient-to-r from-amber-500/20 via-[#1c1811]/95 to-amber-500/20 shadow-[0_0_35px_rgba(245,158,11,0.4)]'
+                    : i === 1
+                    ? 'border-2 border-slate-300/60 bg-[#141724]/90 shadow-md'
+                    : i === 2
+                    ? 'border-2 border-amber-700/60 bg-[#141724]/90'
+                    : 'border border-white/10 bg-[#101322]/85'
+                }`}
+                initial={{ opacity: 0, y: 15 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.1 }}
               >
-                <div>
-                  {/* Top Bar: Rank Badge + Score Pill */}
-                  <div className="flex items-center justify-between gap-2 mb-3">
-                    <span className={`text-[11px] px-3 py-1 rounded-full uppercase tracking-wider ${rankBadgeBg}`}>
-                      {rankLabel}
+                {/* Left: Rank & Avatar & Name */}
+                <div className="flex items-center gap-3.5 sm:gap-4">
+                  {isWinner ? (
+                    <div className="flex flex-col items-center justify-center min-w-[40px]">
+                      <span className="text-2xl animate-pulse">👑</span>
+                      <span className="text-[10px] font-black text-amber-300 uppercase tracking-wider">#1</span>
+                    </div>
+                  ) : (
+                    <span className="text-base font-black font-mono text-slate-400 min-w-[40px] text-center">
+                      #{s.rank || i + 1}
                     </span>
+                  )}
 
-                    <span className="text-xs sm:text-sm font-black font-mono px-3 py-1 rounded-full bg-amber-400/20 text-amber-300 border border-amber-400/40">
-                      {s.score} pts
-                    </span>
-                  </div>
+                  <Avatar avatarId={s.avatarId} size={44} />
 
-                  {/* Player Profile Info */}
-                  <div className="flex items-center gap-3 mb-4 pb-3 border-b border-white/10">
-                    <Avatar avatarId={s.avatarId} size={42} />
-                    <div className="overflow-hidden">
-                      <h3 className="font-black text-sm sm:text-base text-white truncate">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h3 className={`font-black text-base sm:text-lg ${isWinner ? 'text-amber-300' : 'text-white'}`}>
                         {s.playerName}
                       </h3>
-                      <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
-                        {s.teamName && (
-                          <span className="text-[10px] font-bold text-purple-300 bg-purple-500/20 px-2 py-0.5 rounded-full">
-                            {s.teamName}
-                          </span>
-                        )}
-                        {s.calledPandu && (
-                          <span className="text-[10px] font-black text-amber-300 bg-amber-500/20 px-2 py-0.5 rounded-full border border-amber-400/30">
-                            👑 Called PANDU
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Player's Full Cards Shown Face-Up in Position */}
-                  <div className="space-y-1.5">
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                      Final Cards ({s.cards?.length || 0})
-                    </p>
-
-                    <div className="flex flex-wrap gap-2 justify-center py-2 bg-black/20 rounded-2xl border border-white/5 p-2">
-                      {s.cards && s.cards.length > 0 ? (
-                        s.cards.map((c: any, cIdx: number) => (
-                          <div key={c?.id || cIdx} className="hover:scale-105 transition-transform">
-                            <Card
-                              card={{ ...c, faceUp: true }}
-                              size="sm"
-                              index={cIdx}
-                            />
-                          </div>
-                        ))
-                      ) : (
-                        <span className="text-xs text-slate-500 italic py-3">No cards (0 pts)</span>
+                      {isWinner && (
+                        <span className="text-[10px] font-black text-amber-400 bg-amber-400/20 px-2 py-0.5 rounded-full border border-amber-400/40">
+                          PANDU CROWN
+                        </span>
                       )}
                     </div>
+                    {s.teamName && (
+                      <span className="text-[11px] font-bold text-purple-300 bg-purple-500/20 px-2 py-0.5 rounded-full mt-0.5 inline-block">
+                        {s.teamName}
+                      </span>
+                    )}
                   </div>
+                </div>
+
+                {/* Right: Score */}
+                <div className="flex items-center gap-2">
+                  <span className={`text-base sm:text-lg font-black font-mono px-4 py-1.5 rounded-2xl border ${
+                    isWinner
+                      ? 'bg-amber-400/25 text-amber-300 border-amber-400/50 shadow-inner'
+                      : 'bg-white/5 text-slate-200 border-white/10'
+                  }`}>
+                    {s.score} pts
+                  </span>
                 </div>
               </motion.div>
             );
