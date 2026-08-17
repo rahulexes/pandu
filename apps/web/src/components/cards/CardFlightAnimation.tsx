@@ -20,6 +20,8 @@ export interface FlyingCardAnim {
   scaleEnd?: number;
   rotateStart?: number;
   rotateEnd?: number;
+  arcHeight?: number;
+  size?: 'sm' | 'md' | 'lg';
   highlighted?: boolean;
 }
 
@@ -39,6 +41,10 @@ export function CardFlightAnimationOverlay({
             faceUp: false,
           };
 
+          const arc = flight.arcHeight ?? 45;
+          const midX = (flight.startX + flight.endX) / 2;
+          const midY = Math.min(flight.startY, flight.endY) - arc;
+
           return (
             <motion.div
               key={flight.id}
@@ -51,21 +57,26 @@ export function CardFlightAnimationOverlay({
                 opacity: 1,
               }}
               animate={{
-                x: flight.endX,
-                y: flight.endY,
-                scale: flight.scaleEnd ?? 1,
-                rotate: flight.rotateEnd ?? 0,
+                x: [flight.startX, midX, flight.endX],
+                y: [flight.startY, midY, flight.endY],
+                scale: [flight.scaleStart ?? 1, 1.12, flight.scaleEnd ?? 1],
+                rotate: [flight.rotateStart ?? 0, (flight.rotateStart ?? 0) * 0.3, flight.rotateEnd ?? 0],
                 opacity: 1,
               }}
               exit={{ opacity: 0, scale: 0.8 }}
               transition={{
-                duration: flight.duration ?? 0.65,
-                ease: [0.25, 1, 0.5, 1], // Smooth cubic-bezier spring
+                duration: flight.duration ?? 0.7,
+                times: [0, 0.45, 1],
+                ease: ['easeOut', 'easeInOut'],
               }}
               onAnimationComplete={() => onComplete(flight.id)}
             >
-              <div className="shadow-2xl filter drop-shadow-[0_15px_25px_rgba(0,0,0,0.6)]">
-                <Card card={cardToRender} size="md" highlighted={flight.highlighted} />
+              <div className="shadow-[0_20px_40px_rgba(0,0,0,0.8)] filter drop-shadow-[0_15px_25px_rgba(0,0,0,0.6)]">
+                <Card
+                  card={cardToRender}
+                  size={flight.size ?? 'md'}
+                  highlighted={flight.highlighted}
+                />
               </div>
             </motion.div>
           );
