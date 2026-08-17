@@ -109,20 +109,36 @@ export default function LobbyPage({
     updateSettingsLocal({ mode });
     emitGameAction('lobby:updateSettings', { settings: { mode } });
   };
-
-  // Host Action: Update Cards Dealt
-  const handleSetCardsDealt = (cardsDealt: number) => {
+  // Host Action: Update Cards Dealt (+ / -)
+  const handleUpdateCardsDealt = (delta: number) => {
     soundEngine.playCardFlip();
-    const initialViewable = cardsDealt >= 6 ? 3 : 2;
-    updateSettingsLocal({ cardsDealt, initialViewable });
-    emitGameAction('lobby:updateSettings', { settings: { cardsDealt, initialViewable } });
+    const current = room?.settings.cardsDealt ?? 4;
+    const nextCards = Math.max(2, Math.min(10, current + delta));
+    const maxPeekable = Math.floor(nextCards / 2);
+    const currentPeekable = room?.settings.initialViewable ?? 2;
+    const nextPeekable = Math.min(currentPeekable, maxPeekable);
+    updateSettingsLocal({ cardsDealt: nextCards, initialViewable: nextPeekable });
+    emitGameAction('lobby:updateSettings', { settings: { cardsDealt: nextCards, initialViewable: nextPeekable } });
   };
 
-  // Host Action: Update Queens Count
-  const handleSetQueens = (queenCount: number) => {
+  // Host Action: Update Peekable Cards (+ / -)
+  const handleUpdatePeekable = (delta: number) => {
     soundEngine.playCardFlip();
-    updateSettingsLocal({ queenCount });
-    emitGameAction('lobby:updateSettings', { settings: { queenCount } });
+    const currentCards = room?.settings.cardsDealt ?? 4;
+    const maxPeekable = Math.floor(currentCards / 2);
+    const currentPeekable = room?.settings.initialViewable ?? 2;
+    const nextPeekable = Math.max(0, Math.min(maxPeekable, currentPeekable + delta));
+    updateSettingsLocal({ initialViewable: nextPeekable });
+    emitGameAction('lobby:updateSettings', { settings: { initialViewable: nextPeekable } });
+  };
+
+  // Host Action: Update Queens Count (+ / -)
+  const handleUpdateQueens = (delta: number) => {
+    soundEngine.playCardFlip();
+    const currentQueens = room?.settings.queenCount ?? 4;
+    const nextQueens = Math.max(0, Math.min(8, currentQueens + delta));
+    updateSettingsLocal({ queenCount: nextQueens });
+    emitGameAction('lobby:updateSettings', { settings: { queenCount: nextQueens } });
   };
 
   // Player Action: Join Team
@@ -305,53 +321,93 @@ export default function LobbyPage({
                   </div>
                 </div>
 
-                {/* Number of Cards Dealt */}
-                <div>
-                  <div className="flex items-center justify-between mb-1.5">
-                    <label className="text-xs font-bold text-slate-300">Cards Dealt</label>
-                    <span className="text-xs text-amber-300 font-bold font-mono">
-                      {room?.settings.cardsDealt ?? 4} cards ({room?.settings.initialViewable ?? 2} peekable)
-                    </span>
-                  </div>
-                  <div className="grid grid-cols-3 gap-2.5">
-                    {[4, 6, 8].map((count) => (
+                {/* Number of Cards Dealt (Y) & Initial Peekable (X) */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {/* Cards Dealt */}
+                  <div className="bg-[#141724]/80 p-3 rounded-2xl border border-white/10 flex flex-col justify-between">
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="text-xs font-bold text-slate-300">Cards Dealt (Y)</label>
+                      <span className="text-xs text-amber-300 font-bold font-mono">
+                        {room?.settings.cardsDealt ?? 4}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between gap-2 bg-[#0c0e17] p-1.5 rounded-xl border border-white/10">
                       <button
-                        key={count}
-                        className={`py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer border ${
-                          (room?.settings.cardsDealt ?? 4) === count
-                            ? 'border-purple-400 bg-purple-600/40 text-purple-200 shadow-md shadow-purple-500/20 font-black'
-                            : 'border-white/10 bg-[#141724]/80 text-slate-400 hover:text-white'
-                        }`}
-                        onClick={() => handleSetCardsDealt(count)}
+                        className="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 text-white font-black text-lg flex items-center justify-center cursor-pointer transition-all active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed"
+                        onClick={() => handleUpdateCardsDealt(-1)}
+                        disabled={(room?.settings.cardsDealt ?? 4) <= 2}
                       >
-                        {count} Cards
+                        -
                       </button>
-                    ))}
+                      <span className="font-mono font-black text-sm text-amber-300">
+                        {room?.settings.cardsDealt ?? 4} Cards
+                      </span>
+                      <button
+                        className="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 text-white font-black text-lg flex items-center justify-center cursor-pointer transition-all active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed"
+                        onClick={() => handleUpdateCardsDealt(1)}
+                        disabled={(room?.settings.cardsDealt ?? 4) >= 10}
+                      >
+                        +
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Initial Peekable */}
+                  <div className="bg-[#141724]/80 p-3 rounded-2xl border border-white/10 flex flex-col justify-between">
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="text-xs font-bold text-slate-300">Peekable Cards (X)</label>
+                      <span className="text-xs text-purple-300 font-bold font-mono">
+                        {room?.settings.initialViewable ?? 2}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between gap-2 bg-[#0c0e17] p-1.5 rounded-xl border border-white/10">
+                      <button
+                        className="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 text-white font-black text-lg flex items-center justify-center cursor-pointer transition-all active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed"
+                        onClick={() => handleUpdatePeekable(-1)}
+                        disabled={(room?.settings.initialViewable ?? 2) <= 0}
+                      >
+                        -
+                      </button>
+                      <span className="font-mono font-black text-sm text-purple-300">
+                        {room?.settings.initialViewable ?? 2} Peekable
+                      </span>
+                      <button
+                        className="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 text-white font-black text-lg flex items-center justify-center cursor-pointer transition-all active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed"
+                        onClick={() => handleUpdatePeekable(1)}
+                        disabled={(room?.settings.initialViewable ?? 2) >= Math.floor((room?.settings.cardsDealt ?? 4) / 2)}
+                      >
+                        +
+                      </button>
+                    </div>
                   </div>
                 </div>
 
                 {/* Queens Count */}
-                <div>
+                <div className="bg-[#141724]/80 p-3 rounded-2xl border border-white/10">
                   <div className="flex items-center justify-between mb-1.5">
                     <label className="text-xs font-bold text-slate-300">Queen Cards (Swap Power)</label>
                     <span className="text-xs text-purple-300 font-bold font-mono">
                       {room?.settings.queenCount ?? 4} Queens in deck
                     </span>
                   </div>
-                  <div className="grid grid-cols-4 gap-2">
-                    {[0, 2, 4, 8].map((count) => (
-                      <button
-                        key={count}
-                        className={`py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer border ${
-                          (room?.settings.queenCount ?? 4) === count
-                            ? 'border-purple-400 bg-purple-600/40 text-purple-200 shadow-md shadow-purple-500/20 font-black'
-                            : 'border-white/10 bg-[#141724]/80 text-slate-400 hover:text-white'
-                        }`}
-                        onClick={() => handleSetQueens(count)}
-                      >
-                        {count === 0 ? 'None' : `${count} Q`}
-                      </button>
-                    ))}
+                  <div className="flex items-center justify-between gap-2 bg-[#0c0e17] p-1.5 rounded-xl border border-white/10">
+                    <button
+                      className="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 text-white font-black text-lg flex items-center justify-center cursor-pointer transition-all active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed"
+                      onClick={() => handleUpdateQueens(-1)}
+                      disabled={(room?.settings.queenCount ?? 4) <= 0}
+                    >
+                      -
+                    </button>
+                    <span className="font-mono font-black text-sm text-purple-300">
+                      {(room?.settings.queenCount ?? 4) === 0 ? 'No Queens' : `${room?.settings.queenCount ?? 4} Queens`}
+                    </span>
+                    <button
+                      className="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 text-white font-black text-lg flex items-center justify-center cursor-pointer transition-all active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed"
+                      onClick={() => handleUpdateQueens(1)}
+                      disabled={(room?.settings.queenCount ?? 4) >= 8}
+                    >
+                      +
+                    </button>
                   </div>
                 </div>
               </div>
