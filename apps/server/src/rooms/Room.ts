@@ -623,7 +623,7 @@ export class Room {
     if (!this.turnSystem) return;
 
     // Reset fast-reaction trackers on turn change
-    this.xReactedTopCardId = null;
+    this.xReactionAttemptedPlayers.clear();
 
     // Skip any players with 0 cards remaining
     let attempts = 0;
@@ -740,7 +740,7 @@ export class Room {
     // Add to discard pile
     addToDiscardPile(this.discardPile, cardId);
     this.drawnCardId = null;
-    this.xReactedTopCardId = null;
+    this.xReactionAttemptedPlayers.clear();
 
     this.logger.log(GameEventType.CARD_DISCARDED, { playerId, cardId, rank: card.rank, suit: card.suit });
 
@@ -804,7 +804,7 @@ export class Room {
     // Discard the old hand card
     addToDiscardPile(this.discardPile, handCardId);
     this.drawnCardId = null;
-    this.xReactedTopCardId = null;
+    this.xReactionAttemptedPlayers.clear();
 
     // The player (and team) now knows the drawn card
     const teamPlayerIds = this.getTeamPlayerIds(playerId);
@@ -1182,7 +1182,6 @@ export class Room {
   // ════════════════════════════════════════════════════════
 
   private xReactionAttemptedPlayers = new Set<string>();
-  private xReactedTopCardId: string | null = null;
   private pendingPenaltyCards = new Map<string, string>();
 
   attemptXReaction(playerId: string, cardId: string): { error?: string } {
@@ -1194,13 +1193,8 @@ export class Room {
       return { error: 'Fast discard not allowed in this phase' };
     }
 
-    const topDiscardId = this.discardPile[this.discardPile.length - 1];
-    if (this.xReactedTopCardId === topDiscardId) {
-      return { error: 'Fast discard already used for this top card' };
-    }
-
     if (this.xReactionAttemptedPlayers.has(playerId)) {
-      return { error: 'You have already used your fast discard attempt for this card' };
+      return { error: 'You have already used your fast discard chance for this card' };
     }
 
     const hand = this.getPlayerHand(playerId);
@@ -1208,9 +1202,10 @@ export class Room {
       return { error: 'Card not in your hand' };
     }
 
-    // Record attempt for this top discard card
+    // Record that this player has taken their 1 chance for the current top discard
     this.xReactionAttemptedPlayers.add(playerId);
 
+    const topDiscardId = this.discardPile[this.discardPile.length - 1];
     const topDiscardCard = this.allCards.get(topDiscardId)!;
     const candidateCard = this.allCards.get(cardId)!;
 
@@ -1227,9 +1222,6 @@ export class Room {
         this.setPlayerHand(playerId, hand);
       }
       addToDiscardPile(this.discardPile, cardId);
-      this.xReactedTopCardId = cardId;
-      // Reset attempts for all players because top card changed
-      this.xReactionAttemptedPlayers.clear();
 
       this.logger.log(GameEventType.X_REACTION_ATTEMPT, { playerId, cardId, success: true });
 

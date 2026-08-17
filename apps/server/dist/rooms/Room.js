@@ -504,7 +504,7 @@ export class Room {
         if (!this.turnSystem)
             return;
         // Reset fast-reaction trackers on turn change
-        this.xReactedTopCardId = null;
+        this.xReactionAttemptedPlayers.clear();
         // Skip any players with 0 cards remaining
         let attempts = 0;
         while (attempts < this.players.size) {
@@ -600,7 +600,7 @@ export class Room {
         // Add to discard pile
         addToDiscardPile(this.discardPile, cardId);
         this.drawnCardId = null;
-        this.xReactedTopCardId = null;
+        this.xReactionAttemptedPlayers.clear();
         this.logger.log(GameEventType.CARD_DISCARDED, { playerId, cardId, rank: card.rank, suit: card.suit });
         // Broadcast the discard (card is now visible to all)
         this.emitEvent('game:cardDiscarded', {
@@ -660,7 +660,7 @@ export class Room {
         // Discard the old hand card
         addToDiscardPile(this.discardPile, handCardId);
         this.drawnCardId = null;
-        this.xReactedTopCardId = null;
+        this.xReactionAttemptedPlayers.clear();
         // The player (and team) now knows the drawn card
         const teamPlayerIds = this.getTeamPlayerIds(playerId);
         for (const pid of teamPlayerIds) {
@@ -981,7 +981,6 @@ export class Room {
     // X REACTION (Real-time fast discard)
     // ════════════════════════════════════════════════════════
     xReactionAttemptedPlayers = new Set();
-    xReactedTopCardId = null;
     pendingPenaltyCards = new Map();
     attemptXReaction(playerId, cardId) {
         if (this.discardPile.length === 0)
@@ -992,19 +991,16 @@ export class Room {
             this.stateMachine.currentPhase === GamePhase.GAME_OVER) {
             return { error: 'Fast discard not allowed in this phase' };
         }
-        const topDiscardId = this.discardPile[this.discardPile.length - 1];
-        if (this.xReactedTopCardId === topDiscardId) {
-            return { error: 'Fast discard already used for this top card' };
-        }
         if (this.xReactionAttemptedPlayers.has(playerId)) {
-            return { error: 'You have already used your fast discard attempt for this card' };
+            return { error: 'You have already used your fast discard chance for this card' };
         }
         const hand = this.getPlayerHand(playerId);
         if (!hand || !hand.includes(cardId)) {
             return { error: 'Card not in your hand' };
         }
-        // Record attempt for this top discard card
+        // Record that this player has taken their 1 chance for the current top discard
         this.xReactionAttemptedPlayers.add(playerId);
+        const topDiscardId = this.discardPile[this.discardPile.length - 1];
         const topDiscardCard = this.allCards.get(topDiscardId);
         const candidateCard = this.allCards.get(cardId);
         // Check match: rank matches top discard ONLY (Jack is not wild)
@@ -1018,9 +1014,6 @@ export class Room {
                 this.setPlayerHand(playerId, hand);
             }
             addToDiscardPile(this.discardPile, cardId);
-            this.xReactedTopCardId = cardId;
-            // Reset attempts for all players because top card changed
-            this.xReactionAttemptedPlayers.clear();
             this.logger.log(GameEventType.X_REACTION_ATTEMPT, { playerId, cardId, success: true });
             // Broadcast discard
             this.emitEvent('game:cardDiscarded', {

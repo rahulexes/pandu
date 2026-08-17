@@ -106,7 +106,6 @@ export declare class Room {
         error?: string;
     };
     private xReactionAttemptedPlayers;
-    private xReactedTopCardId;
     private pendingPenaltyCards;
     attemptXReaction(playerId: string, cardId: string): {
         error?: string;
