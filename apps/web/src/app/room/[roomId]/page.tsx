@@ -1,5 +1,5 @@
 // ============================================================
-// PANDU — Responsive Lobby (Widescreen Landscape Laptop + Mobile)
+// PANDU — Fullscreen Landscape Laptop & Mobile Responsive Lobby
 // ============================================================
 
 'use client';
@@ -148,21 +148,21 @@ export default function LobbyPage({
   };
 
   return (
-    <div className="min-h-dvh flex flex-col justify-between p-4 sm:p-6 md:p-8 relative overflow-hidden bg-[#0c0e17] text-slate-100 select-none">
+    <div className="min-h-dvh flex flex-col justify-between p-4 sm:p-6 md:p-8 lg:p-10 relative overflow-hidden bg-[#0c0e17] text-slate-100 select-none">
       {/* Three.js Fullscreen 3D Floating Cards in Lobby Background */}
       <ThreeHeroCards />
 
       {/* Ambient background glows */}
       <div className="absolute inset-0 bg-radial from-[#151726]/60 via-[#0c0e17]/85 to-[#07080f] opacity-95 pointer-events-none z-0" />
-      <div className="absolute top-10 left-1/2 -translate-x-1/2 w-[450px] h-[350px] rounded-full bg-[#a855f7]/12 blur-[140px] pointer-events-none z-0" />
+      <div className="absolute top-10 left-1/2 -translate-x-1/2 w-[550px] h-[400px] rounded-full bg-[#a855f7]/12 blur-[150px] pointer-events-none z-0" />
 
-      {/* ── Main Container (Mobile: max-w-md, Laptop: max-w-6xl Landscape Grid) ── */}
-      <div className="relative z-10 flex flex-col flex-1 max-w-md md:max-w-6xl mx-auto w-full pb-32 md:pb-28 pointer-events-auto">
+      {/* ── Main Container (Mobile: max-w-md, Laptop: max-w-6xl Full Landscape Grid) ── */}
+      <div className="relative z-10 flex flex-col flex-1 max-w-md md:max-w-6xl mx-auto w-full pb-36 md:pb-32 pointer-events-auto">
         
         {/* ── Top Header Bar ── */}
-        <header className="flex items-center justify-between mb-4 pt-1">
+        <header className="flex items-center justify-between mb-3 pt-1 w-full">
           <button
-            className="text-sm text-slate-200 hover:text-white font-bold flex items-center gap-1.5 cursor-pointer transition-all bg-[#141724]/80 hover:bg-[#1f2438] px-3.5 py-1.5 rounded-full border border-white/10"
+            className="text-sm text-slate-200 hover:text-white font-bold flex items-center gap-1.5 cursor-pointer transition-all bg-[#141724]/90 hover:bg-[#1f2438] px-4 py-2 rounded-full border border-white/10 shadow-md"
             onClick={() => {
               soundEngine.playCardFlip();
               emitGameAction('room:leave');
@@ -172,12 +172,12 @@ export default function LobbyPage({
             <span className="text-base">❮</span> Leave
           </button>
 
-          <h1 className="font-display text-2xl md:text-3xl tracking-wider font-black bg-gradient-to-r from-[#fbbf24] via-[#f3e8ff] to-[#c084fc] bg-clip-text text-transparent drop-shadow-[0_2px_12px_rgba(192,132,252,0.4)]">
+          <h1 className="font-display text-2xl md:text-4xl tracking-wider font-black bg-gradient-to-r from-[#fbbf24] via-[#f3e8ff] to-[#c084fc] bg-clip-text text-transparent drop-shadow-[0_2px_15px_rgba(192,132,252,0.4)]">
             PANDU
           </h1>
 
           <button
-            className="p-2 rounded-full bg-[#141724]/80 hover:bg-[#1f2438] border border-white/10 text-slate-300 hover:text-white transition-all cursor-pointer text-lg"
+            className="p-2.5 rounded-full bg-[#141724]/90 hover:bg-[#1f2438] border border-white/10 text-slate-300 hover:text-white transition-all cursor-pointer text-lg shadow-md"
             onClick={() => {
               soundEngine.playCardFlip();
               setShowSettings(true);
@@ -187,94 +187,94 @@ export default function LobbyPage({
           </button>
         </header>
 
-        {/* ── Landscape 2-Column Grid on Laptop (Single Column on Mobile) ── */}
-        <div className="grid grid-cols-1 md:grid-cols-12 md:gap-8 flex-1">
+        {/* ── Room Code Hero Banner (Centered Across Screen) ── */}
+        <div className="text-center my-3 md:my-4 p-3 md:p-4 rounded-3xl bg-[#101322]/85 border border-purple-500/20 backdrop-blur-2xl shadow-xl">
+          <p className="text-[11px] md:text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">
+            Room Code
+          </p>
+
+          {/* Interactive Click-to-Copy Room Code Badge */}
+          <motion.button
+            className="group inline-flex items-center gap-3 px-6 py-1.5 md:py-2 rounded-3xl bg-[#141724]/90 hover:bg-[#1f2438] border-2 border-purple-500/30 hover:border-purple-400/60 shadow-xl shadow-purple-500/20 transition-all cursor-pointer"
+            onClick={copyRoomCode}
+            whileHover={{ scale: 1.04 }}
+            whileTap={{ scale: 0.96 }}
+            title="Click to copy Room Code"
+          >
+            <span className="text-4xl sm:text-5xl md:text-6xl font-mono font-black tracking-[0.25em] text-transparent bg-clip-text bg-gradient-to-r from-[#d8b4fe] via-[#f3e8ff] to-[#c084fc] drop-shadow-[0_0_25px_rgba(192,132,252,0.65)]">
+              {roomId}
+            </span>
+            <span className="text-xl text-purple-300 group-hover:text-amber-300 transition-colors">
+              📋
+            </span>
+          </motion.button>
+
+          {/* Action Row: Copy Code + Copy Link + Share QR */}
+          <div className="flex items-center justify-center gap-2.5 mt-3 flex-wrap">
+            <button
+              className={`px-4 py-2 rounded-full font-bold text-xs tracking-wider uppercase transition-all duration-200 flex items-center gap-1.5 cursor-pointer shadow-lg border ${
+                copiedCode
+                  ? 'bg-emerald-500 text-slate-950 border-emerald-400 font-black'
+                  : 'bg-[#181c2b]/90 hover:bg-[#20263a] text-amber-300 border-amber-400/30 hover:border-amber-400/60'
+              }`}
+              onClick={copyRoomCode}
+            >
+              <span>{copiedCode ? '✓' : '📋'}</span>
+              <span>{copiedCode ? 'Code Copied!' : 'Copy Code'}</span>
+            </button>
+
+            <button
+              className={`px-4 py-2 rounded-full font-bold text-xs tracking-wider uppercase transition-all duration-200 flex items-center gap-1.5 cursor-pointer shadow-lg border ${
+                copiedLink
+                  ? 'bg-emerald-500 text-slate-950 border-emerald-400 font-black'
+                  : 'bg-[#181c2b]/90 hover:bg-[#20263a] text-slate-200 border-white/10 hover:border-purple-400/40'
+              }`}
+              onClick={copyInviteLink}
+            >
+              <span>{copiedLink ? '✓' : '🔗'}</span>
+              <span>{copiedLink ? 'Link Copied!' : 'Copy Link'}</span>
+            </button>
+
+            <button
+              className="p-2 px-4 rounded-full font-bold text-xs tracking-wider uppercase transition-all duration-200 flex items-center gap-1.5 cursor-pointer shadow-lg bg-[#181c2b]/90 hover:bg-[#20263a] text-slate-200 border border-white/10 hover:border-purple-400/40"
+              onClick={() => {
+                soundEngine.playCardFlip();
+                setShowQR(true);
+              }}
+              title="Share Room QR Code"
+            >
+              <span className="text-sm">📱</span>
+              <span className="text-[11px] text-slate-300">QR</span>
+            </button>
+          </div>
+        </div>
+
+        {/* ── Main Landscape 2-Column Grid (Laptop) / Single Column (Mobile) ── */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-8 flex-1 mt-2">
           
-          {/* ── LEFT COLUMN (Host Rules & Room Code Hero) ── */}
-          <div className="md:col-span-6 flex flex-col space-y-4">
-            
-            {/* ── Room Code Hero Section ── */}
-            <div className="text-center my-2 md:my-0 md:p-5 rounded-3xl bg-[#101322]/80 md:border md:border-purple-500/20 backdrop-blur-xl">
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">
-                Room Code
-              </p>
-
-              {/* Interactive Click-to-Copy Room Code Badge */}
-              <motion.button
-                className="group inline-flex items-center gap-3 px-6 py-2 rounded-3xl bg-[#141724]/90 hover:bg-[#1f2438] border-2 border-purple-500/30 hover:border-purple-400/60 shadow-xl shadow-purple-500/20 transition-all cursor-pointer"
-                onClick={copyRoomCode}
-                whileHover={{ scale: 1.04 }}
-                whileTap={{ scale: 0.96 }}
-                title="Click to copy Room Code"
-              >
-                <span className="text-4xl sm:text-5xl md:text-5xl font-mono font-black tracking-[0.2em] text-transparent bg-clip-text bg-gradient-to-r from-[#d8b4fe] via-[#f3e8ff] to-[#c084fc] drop-shadow-[0_0_25px_rgba(192,132,252,0.65)]">
-                  {roomId}
-                </span>
-                <span className="text-lg text-purple-300 group-hover:text-amber-300 transition-colors">
-                  📋
-                </span>
-              </motion.button>
-
-              {/* Action Row: Copy Code + Copy Link + Share QR */}
-              <div className="flex items-center justify-center gap-2 mt-3 flex-wrap">
-                <button
-                  className={`px-4 py-2 rounded-full font-bold text-xs tracking-wider uppercase transition-all duration-200 flex items-center gap-1.5 cursor-pointer shadow-lg border ${
-                    copiedCode
-                      ? 'bg-emerald-500 text-slate-950 border-emerald-400 font-black'
-                      : 'bg-[#181c2b]/90 hover:bg-[#20263a] text-amber-300 border-amber-400/30 hover:border-amber-400/60'
-                  }`}
-                  onClick={copyRoomCode}
-                >
-                  <span>{copiedCode ? '✓' : '📋'}</span>
-                  <span>{copiedCode ? 'Code Copied!' : 'Copy Code'}</span>
-                </button>
-
-                <button
-                  className={`px-4 py-2 rounded-full font-bold text-xs tracking-wider uppercase transition-all duration-200 flex items-center gap-1.5 cursor-pointer shadow-lg border ${
-                    copiedLink
-                      ? 'bg-emerald-500 text-slate-950 border-emerald-400 font-black'
-                      : 'bg-[#181c2b]/90 hover:bg-[#20263a] text-slate-200 border-white/10 hover:border-purple-400/40'
-                  }`}
-                  onClick={copyInviteLink}
-                >
-                  <span>{copiedLink ? '✓' : '🔗'}</span>
-                  <span>{copiedLink ? 'Link Copied!' : 'Copy Link'}</span>
-                </button>
-
-                <button
-                  className="p-2 px-3.5 rounded-full font-bold text-xs tracking-wider uppercase transition-all duration-200 flex items-center gap-1.5 cursor-pointer shadow-lg bg-[#181c2b]/90 hover:bg-[#20263a] text-slate-200 border border-white/10 hover:border-purple-400/40"
-                  onClick={() => {
-                    soundEngine.playCardFlip();
-                    setShowQR(true);
-                  }}
-                  title="Share Room QR Code"
-                >
-                  <span className="text-sm">📱</span>
-                  <span className="text-[11px] text-slate-300">QR</span>
-                </button>
-              </div>
-            </div>
-
-            {/* ── Game Mode & Rule Customization (Host Controls) ── */}
+          {/* ── LEFT COLUMN (Host Game Rules & Mode Customization) ── */}
+          <div className="flex flex-col space-y-4">
             {effectiveIsHost ? (
-              <div className="space-y-4 p-4 md:p-5 rounded-3xl bg-[#101322]/80 border border-purple-500/20 backdrop-blur-xl">
+              <div className="space-y-4 p-5 md:p-6 rounded-3xl bg-[#101322]/85 border border-purple-500/25 backdrop-blur-2xl shadow-xl h-full">
+                <div className="flex items-center justify-between border-b border-white/10 pb-2.5">
+                  <h2 className="text-base font-black text-slate-100 tracking-wide flex items-center gap-2">
+                    <span>⚙️</span> Rule Customization
+                  </h2>
+                  <span className="text-[10px] font-bold text-amber-400 bg-amber-400/10 px-2.5 py-1 rounded-full border border-amber-400/20">
+                    👑 Host Controls
+                  </span>
+                </div>
+
                 {/* Game Mode Section */}
                 <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <h2 className="text-sm font-black text-slate-100 tracking-wide">
-                      Game Mode
-                    </h2>
-                    <span className="text-[10px] font-bold text-amber-400 bg-amber-400/10 px-2 py-0.5 rounded-full border border-amber-400/20">
-                      Host Setting
-                    </span>
-                  </div>
-
+                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 block">
+                    Game Mode
+                  </label>
                   <div className="grid grid-cols-2 gap-3">
-                    {/* Individual Mode Card */}
                     <button
                       className={`p-3.5 rounded-2xl text-center transition-all relative overflow-hidden cursor-pointer ${
                         currentMode === GameMode.INDIVIDUAL
-                          ? 'border-2 border-[#eab308] bg-[#221c17]/95 text-[#fbbf24] shadow-[0_0_25px_rgba(234,179,8,0.25)]'
+                          ? 'border-2 border-[#eab308] bg-[#221c17]/95 text-[#fbbf24] shadow-[0_0_25px_rgba(234,179,8,0.3)]'
                           : 'border border-white/10 bg-[#141724]/85 text-slate-400 hover:text-slate-200 hover:bg-[#181c2b]'
                       }`}
                       onClick={() => handleSetMode(GameMode.INDIVIDUAL)}
@@ -287,11 +287,10 @@ export default function LobbyPage({
                       </span>
                     </button>
 
-                    {/* Team Mode Card */}
                     <button
                       className={`p-3.5 rounded-2xl text-center transition-all relative overflow-hidden cursor-pointer ${
                         currentMode === GameMode.TEAM
-                          ? 'border-2 border-[#a855f7] bg-[#1c162b]/95 text-[#c084fc] shadow-[0_0_25px_rgba(168,85,247,0.25)]'
+                          ? 'border-2 border-[#a855f7] bg-[#1c162b]/95 text-[#c084fc] shadow-[0_0_25px_rgba(168,85,247,0.3)]'
                           : 'border border-white/10 bg-[#141724]/85 text-slate-400 hover:text-slate-200 hover:bg-[#181c2b]'
                       }`}
                       onClick={() => handleSetMode(GameMode.TEAM)}
@@ -314,11 +313,11 @@ export default function LobbyPage({
                       {room?.settings.cardsDealt ?? 4} cards ({room?.settings.initialViewable ?? 2} peekable)
                     </span>
                   </div>
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className="grid grid-cols-3 gap-2.5">
                     {[4, 6, 8].map((count) => (
                       <button
                         key={count}
-                        className={`py-2 rounded-xl text-xs font-bold transition-all cursor-pointer border ${
+                        className={`py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer border ${
                           (room?.settings.cardsDealt ?? 4) === count
                             ? 'border-purple-400 bg-purple-600/40 text-purple-200 shadow-md shadow-purple-500/20 font-black'
                             : 'border-white/10 bg-[#141724]/80 text-slate-400 hover:text-white'
@@ -336,14 +335,14 @@ export default function LobbyPage({
                   <div className="flex items-center justify-between mb-1.5">
                     <label className="text-xs font-bold text-slate-300">Queen Cards (Swap Power)</label>
                     <span className="text-xs text-purple-300 font-bold font-mono">
-                      {room?.settings.queenCount ?? 4} in deck
+                      {room?.settings.queenCount ?? 4} Queens in deck
                     </span>
                   </div>
                   <div className="grid grid-cols-4 gap-2">
                     {[0, 2, 4, 8].map((count) => (
                       <button
                         key={count}
-                        className={`py-2 rounded-xl text-xs font-bold transition-all cursor-pointer border ${
+                        className={`py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer border ${
                           (room?.settings.queenCount ?? 4) === count
                             ? 'border-purple-400 bg-purple-600/40 text-purple-200 shadow-md shadow-purple-500/20 font-black'
                             : 'border-white/10 bg-[#141724]/80 text-slate-400 hover:text-white'
@@ -358,7 +357,10 @@ export default function LobbyPage({
               </div>
             ) : (
               /* Non-Host View: Rules Overview */
-              <div className="p-4 md:p-5 rounded-3xl bg-[#101322]/80 border border-white/10 backdrop-blur-xl space-y-2">
+              <div className="p-5 md:p-6 rounded-3xl bg-[#101322]/85 border border-white/10 backdrop-blur-2xl space-y-3 shadow-xl h-full">
+                <h2 className="text-base font-black text-slate-100 tracking-wide border-b border-white/10 pb-2.5 flex items-center gap-2">
+                  <span>📜</span> Match Rules
+                </h2>
                 <div className="flex items-center justify-between border-b border-white/10 pb-2">
                   <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Mode</span>
                   <span className="text-sm font-black text-amber-300 uppercase">{currentMode}</span>
@@ -375,12 +377,12 @@ export default function LobbyPage({
             )}
           </div>
 
-          {/* ── RIGHT COLUMN (Players & Team Selection) ── */}
-          <div className="md:col-span-6 flex flex-col space-y-4 mt-4 md:mt-0">
+          {/* ── RIGHT COLUMN (Players Roster & Team Selection) ── */}
+          <div className="flex flex-col space-y-4">
             
             {/* Team Picker (Only in Team Mode) */}
             {currentMode === GameMode.TEAM && (
-              <div className="p-4 md:p-5 rounded-3xl bg-[#101322]/80 border border-purple-500/20 backdrop-blur-xl">
+              <div className="p-5 rounded-3xl bg-[#101322]/85 border border-purple-500/25 backdrop-blur-2xl shadow-xl">
                 <h2 className="text-sm font-black text-slate-100 mb-3 flex items-center gap-2">
                   <span>👥</span> Choose Your Team
                 </h2>
@@ -419,18 +421,18 @@ export default function LobbyPage({
               </div>
             )}
 
-            {/* Players Roster */}
-            <div className="p-4 md:p-5 rounded-3xl bg-[#101322]/80 border border-purple-500/20 backdrop-blur-xl flex-1">
-              <div className="flex items-center justify-between mb-3">
-                <h2 className="text-sm font-black text-slate-100 tracking-wide flex items-center gap-2">
-                  <span>🎮</span> Players In Lobby
+            {/* Players Roster Panel */}
+            <div className="p-5 md:p-6 rounded-3xl bg-[#101322]/85 border border-purple-500/25 backdrop-blur-2xl shadow-xl flex-1 flex flex-col">
+              <div className="flex items-center justify-between mb-3 border-b border-white/10 pb-2.5">
+                <h2 className="text-base font-black text-slate-100 tracking-wide flex items-center gap-2">
+                  <span>🎮</span> Connected Players
                 </h2>
-                <span className="text-xs font-mono font-bold text-purple-300 bg-purple-500/10 px-2.5 py-0.5 rounded-full border border-purple-500/20">
+                <span className="text-xs font-mono font-bold text-purple-300 bg-purple-500/15 px-3 py-1 rounded-full border border-purple-500/30">
                   {room?.players.length ?? 0} / 8
                 </span>
               </div>
 
-              <div className="space-y-2.5 max-h-[380px] md:max-h-[500px] overflow-y-auto pr-1">
+              <div className="space-y-2.5 max-h-[380px] md:max-h-[460px] overflow-y-auto pr-1 flex-1">
                 <AnimatePresence initial={false}>
                   {room?.players.map((player) => {
                     const isMe = player.id === myPlayerId;
@@ -440,7 +442,7 @@ export default function LobbyPage({
                     return (
                       <motion.div
                         key={player.id}
-                        className={`flex items-center justify-between p-3 rounded-2xl border transition-all ${
+                        className={`flex items-center justify-between p-3.5 rounded-2xl border transition-all ${
                           isMe
                             ? 'bg-purple-950/40 border-purple-400/50 shadow-md shadow-purple-950/40'
                             : 'bg-[#141724]/90 border-white/10'
@@ -453,7 +455,7 @@ export default function LobbyPage({
                         {/* Avatar & Name */}
                         <div className="flex items-center gap-3">
                           <div className="relative">
-                            <Avatar avatarId={player.avatarId} size={42} />
+                            <Avatar avatarId={player.avatarId} size={44} />
                             {isPlayerHost && (
                               <span className="absolute -top-1.5 -right-1.5 text-xs">👑</span>
                             )}
@@ -483,15 +485,15 @@ export default function LobbyPage({
                         {/* Status / Kick Controls */}
                         <div className="flex items-center gap-2">
                           {isPlayerHost ? (
-                            <span className="text-xs font-black text-amber-300 bg-amber-400/10 px-2.5 py-1 rounded-full border border-amber-400/30">
+                            <span className="text-xs font-black text-amber-300 bg-amber-400/10 px-3 py-1 rounded-full border border-amber-400/30">
                               👑 HOST
                             </span>
                           ) : player.isReady ? (
-                            <span className="text-xs font-black text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-full border border-emerald-500/30">
+                            <span className="text-xs font-black text-emerald-400 bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-500/30">
                               ✓ READY
                             </span>
                           ) : (
-                            <span className="text-xs font-semibold text-slate-400 bg-white/5 px-2.5 py-1 rounded-full border border-white/10">
+                            <span className="text-xs font-semibold text-slate-400 bg-white/5 px-3 py-1 rounded-full border border-white/10">
                               NOT READY
                             </span>
                           )}
@@ -518,9 +520,9 @@ export default function LobbyPage({
         </div>
       </div>
 
-      {/* ── Shifted Upwards Action Button Container ── */}
+      {/* ── Centered Action Button Bar (Shifted Upwards from Bottom Bezel) ── */}
       <footer className="fixed bottom-6 sm:bottom-8 left-0 right-0 px-4 z-30 pointer-events-auto">
-        <div className="max-w-md md:max-w-xl mx-auto w-full bg-[#101320]/95 backdrop-blur-2xl p-3 rounded-3xl border-2 border-purple-500/30 shadow-[0_10px_40px_rgba(0,0,0,0.8)]">
+        <div className="max-w-md md:max-w-xl mx-auto w-full bg-[#101322]/95 backdrop-blur-2xl p-3 rounded-3xl border-2 border-purple-500/30 shadow-[0_10px_40px_rgba(0,0,0,0.8)]">
           {effectiveIsHost ? (
             <div>
               {/* Host Status Guidance */}
